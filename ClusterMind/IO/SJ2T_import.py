@@ -3,7 +3,8 @@ import numpy as np
 
 
 # Trace;Constraint;Events-Evaluation;Support;Confidence;Recall;.....
-# 0;    1;         2;                [3:-1]
+# 0;    1;         2;                [3:]
+@DeprecationWarning
 def import_SJ2T_csv(input_file_path):
     """
         SLOW: the creation/resizing of the ndarrays is super slow
@@ -27,7 +28,7 @@ def import_SJ2T_csv(input_file_path):
                 header -= 1
                 continue
             # First trace initialization
-            m = np.array(line[3:-1])
+            m = np.array(line[3:])
             if result.size == 0:
                 result = np.reshape(m, (1, 1, len(line) - 4))
                 first_trace = line[0]
@@ -49,9 +50,41 @@ def import_SJ2T_csv(input_file_path):
     return result
 
 
+def retrieve_SJ2T_csv_data(input_file_path):
+    """
+    retrieve the information regarding the SJ2T csv results. Specifically the number of traces, constraints, and measures
+
+    :param input_file_path:
+    :return:
+    """
+    print("Retrieving results data...")
+    traces = 0
+    constraints = 0
+    measures = 0
+    with open(input_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        lines = 0
+        c = set()
+        for line in csv_reader:
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                measures = len(line[3:])
+                continue
+            lines += 1
+            c.add(line[1])
+        constraints = len(c)
+        traces = int(lines / constraints)
+    print("traces:" + str(traces) + ",constraints:" + str(constraints) + ",measures:" + str(measures))
+    return traces, constraints, measures
+
+
 def import_SJ2T_csv_known(input_file_path, traces, constraints, measures):
     """
-        Knowing the dimension of the matrix in advance make the process way more fast
+        Import the result from SJ2T csv containing the measurement of every constraint in every trace.
+        Performances note: Knowing the dimension of the matrix in advance make the process way more fast
     :param input_file_path:
     :param traces:
     :param constraints:
@@ -79,40 +112,25 @@ def import_SJ2T_csv_known(input_file_path, traces, constraints, measures):
                 ic = 0
                 it += 1
 
-            result[it][ic] = np.array(line[3:-1])
+            # result[it][ic] = np.nan_to_num(np.array(line[3:])) # in case NaN and +-inf is a problem
+            result[it][ic] = np.array(line[3:])
             ic += 1
-    print("result shape:" + str(result.shape))
+    print("3D shape:" + str(result.shape))
     return result
 
 
-def retrieve_csv_data(input_file_path):
-    print("Retrieving results data...")
-    traces = 0
-    constraints = 0
-    measures = 0
-    with open(input_file_path, 'r') as input_file:
-        csv_reader = csv.reader(input_file, delimiter=';')
-        header = 1
-        lines = 0
-        c = set()
-        for line in csv_reader:
-            # First line
-            if header > 0:
-                # Skip the header line
-                header -= 1
-                measures = len(line[3:-1])
-                continue
-            lines += 1
-            c.add(line[1])
-        constraints = len(c)
-        traces = int(lines / constraints)
-    print("traces:" + str(traces) + ",constraints:" + str(constraints) + ",measures:" + str(measures))
-    return traces, constraints, measures
+def import_SJ2T(input_file_path, input_file_format):
+    """
+    Interface to import the SJ2T results. it calls the appropriate function given the file format.
 
-
-file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-output.csv"
-# result = import_SJ2T_csv(file_path)
-traces, constraints, measures = retrieve_csv_data(file_path)
-result = import_SJ2T_csv_known(file_path, traces, constraints, measures)
-# result = import_SJ2T_csv_known(file_path, 1050, 260, 36)
-pass
+    :param input_file_path:
+    :param input_file_format:
+    """
+    if input_file_format == 'csv':
+        traces, constraints, measures = retrieve_SJ2T_csv_data(input_file_path)
+        result = import_SJ2T_csv_known(input_file_path, traces, constraints, measures)
+        return result
+    elif input_file_format == 'json':
+        print("Json inport not yet implemented")
+    else:
+        print("[" + str(input_file_format) + "]Format not recognised")
