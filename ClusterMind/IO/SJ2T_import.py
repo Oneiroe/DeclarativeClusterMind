@@ -134,3 +134,54 @@ def import_SJ2T(input_file_path, input_file_format):
         print("Json inport not yet implemented")
     else:
         print("[" + str(input_file_format) + "]Format not recognised")
+
+
+def import_SJ2T_labels_csv(input_file_path, threshold, constraints):
+    """
+        Import the labels of the result from SJ2T csv containing the measurement of every constraint in every trace.
+        Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+    :param threshold:
+    :param input_file_path:
+    :return:
+    """
+    print("Importing labels...")
+    result = {}
+    trace_index = []
+    repetition = 0
+    # result = np.ndarray(shape=(1, 1, len(line) - 4)) # shape of the result ndarray
+    with open(input_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        for line in csv_reader:
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                continue
+            result.setdefault(line[0], set())
+            if repetition == 0:
+                trace_index += [line[0]]
+                repetition = constraints
+            repetition -= 1
+            if float(line[4]) > threshold:
+                result[line[0]].add(line[1])
+
+    return result, trace_index
+
+
+def import_SJ2T_labels(input_file_path, input_file_format, threshold):
+    """
+    Interface to import the labels of SJ2T results. it calls the appropriate function given the file format.
+
+    :param threshold:
+    :param input_file_path:
+    :param input_file_format:
+    """
+    if input_file_format == 'csv':
+        traces, constraints, measures = retrieve_SJ2T_csv_data(input_file_path)
+        labels, traces_index = import_SJ2T_labels_csv(input_file_path, threshold, constraints)
+        return labels, traces_index
+    elif input_file_format == 'json':
+        print("Json inport not yet implemented")
+    else:
+        print("[" + str(input_file_format) + "]Format not recognised")
