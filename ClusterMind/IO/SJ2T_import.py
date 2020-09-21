@@ -182,6 +182,6 @@ def import_SJ2T_labels(input_file_path, input_file_format, threshold):
         labels, traces_index = import_SJ2T_labels_csv(input_file_path, threshold, constraints)
         return labels, traces_index
     elif input_file_format == 'json':
-        print("Json inport not yet implemented")
+        print("Json import not yet implemented")
     else:
         print("[" + str(input_file_format) + "]Format not recognised")
