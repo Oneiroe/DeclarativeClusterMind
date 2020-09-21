@@ -5,6 +5,7 @@ from collections import Counter
 import sklearn.cluster as cluster
 import pandas as pd
 from pm4py.objects.log.log import EventLog
+from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 import ClusterMind.IO.SJ2T_import as cmio
@@ -54,7 +55,7 @@ def cluster_traces(input2D, traces, constraints, measures):
     # nc = constraints  # number of clusters
     nc = 10  # number of clusters
     # K-means
-    centroids_init = initialize_centroids(measures, constraints)
+    # centroids_init = initialize_centroids(measures, nc)
     # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
     try:
         print("K-Kmeans...")
@@ -111,14 +112,7 @@ def cluster_traces(input2D, traces, constraints, measures):
 
     print(">>>>>>>>>>>>K-Means labels validation")
     return kmeans
-    # return optics
-
-
-def retrieve_labels(file_path, threshold=0.95):
-    # INPUT IMPORT
-    file_format = file_path.split(".")[-1]
-    labels = cmio.import_SJ2T_labels(file_path, file_format, threshold)
-    return labels
+    # return birch
 
 
 def visualize_matrices(input2D, clusters):
@@ -155,6 +149,13 @@ def visualize_results(clusters, labels, traces_index):
     fig.show()
 
 
+def plot_3d(df, name='labels'):
+    iris = px.data.iris()
+    fig = px.scatter_3d(df, x='x', y='y', z='z',color=name, opacity=0.5)
+
+    fig.update_traces(marker=dict(size=3))
+    fig.show()
+
 def cluster_traces_from_file(file_path):
     # INPUT IMPORT
     file_format = file_path.split(".")[-1]
@@ -170,11 +171,11 @@ def cluster_traces_from_file(file_path):
     # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
 
     # reduce dimensions with PCA
-    # pca_variance = 0.98
-    # pca = PCA(pca_variance)
-    # pca.fit(input2D)
-    # input2D_pca = pca.transform(input2D)
-    # print('Dimension of data PCA= ' + str(input2D_pca.shape))
+    pca_variance = 0.98
+    pca = PCA(pca_variance)
+    pca.fit(input2D)
+    input2D = pca.transform(input2D)
+    print('Dimension of data PCA= ' + str(input2D.shape))
 
     # CLUSTERING
     print("Clustering...")
@@ -184,9 +185,17 @@ def cluster_traces_from_file(file_path):
 
     clusters = cluster_traces(input2D, traces, constraints, measures)
 
+    # 3d plot of data through t-SNE
+    names = ['x', 'y', 'z']
+    matrix = TSNE(n_components=3).fit_transform(input2D)
+    df_matrix = pd.DataFrame(matrix)
+    df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
+    df_matrix['labels'] = clusters.labels_
+    plot_3d(df_matrix)
+
     visualize_matrices(input2D, clusters)
 
-    return clusters
+    return clusters, pca
 
 
 def split_log(log, clusters):
@@ -285,14 +294,43 @@ def retrieve_cluster_statistics(clusters, log_file_path):
     pass
 
 
+def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints):
+    print(">>>>>visualize centroids constraints")
+    res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
+    for centroid_index in range(len(clusters.cluster_centers_)):
+        centroid = clusters.cluster_centers_[centroid_index]
+        c = pca.inverse_transform(centroid)
+        for i in range(len(constraints)):
+            if c[1 + measures * i] > threshold:
+                # confidence>threshold, it is the 2nd measure
+                res_matrix[centroid_index] += [1]
+            else:
+                res_matrix[centroid_index] += [0]
+    # export to csv
+    with open('./clustered-logs/centroids-constraints.csv', 'w') as output:
+        csv_output = csv.writer(output, delimiter=';')
+        # header
+        csv_output.writerow(constraints)
+        # values
+        csv_output.writerows(res_matrix)
+
+
 if __name__ == '__main__':
     # file_path = sys.argv[1]
     # file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/test/result_m02_t05.csv"
     sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-output.csv"
     log_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-log.xes"
-    clusters = cluster_traces_from_file(sj2t_file_path)
 
-    labels, traces_index = retrieve_labels(sj2t_file_path)
+    traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_file_path)
+
+    # CLUSTERING
+    clusters, pca = cluster_traces_from_file(sj2t_file_path)
+
+    # VISUALIZATION
+    threshold = 0.95
+    # labels, traces_index = cmio.import_SJ2T_labels(sj2t_file_path, threshold)
     # visualize_results(clusters, labels, traces_index)
+    visualize_centroids_constraints(clusters, pca, threshold, measures, constraints)
 
+    # STATS
     retrieve_cluster_statistics(clusters, log_file_path)

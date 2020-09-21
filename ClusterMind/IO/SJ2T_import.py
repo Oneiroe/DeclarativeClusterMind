@@ -59,8 +59,9 @@ def retrieve_SJ2T_csv_data(input_file_path):
     """
     print("Retrieving results data...")
     traces = 0
-    constraints = 0
+    constraints_num = 0
     measures = 0
+    constraints = []
     with open(input_file_path, 'r') as input_file:
         csv_reader = csv.reader(input_file, delimiter=';')
         header = 1
@@ -75,10 +76,12 @@ def retrieve_SJ2T_csv_data(input_file_path):
                 continue
             lines += 1
             c.add(line[1])
-        constraints = len(c)
-        traces = int(lines / constraints)
-    print("traces:" + str(traces) + ",constraints:" + str(constraints) + ",measures:" + str(measures))
-    return traces, constraints, measures
+            if line[1] not in constraints:
+                constraints += [line[1]]
+        constraints_num = len(c)
+        traces = int(lines / constraints_num)
+    print("traces:" + str(traces) + ",constraints:" + str(constraints_num) + ",measures:" + str(measures))
+    return traces, constraints_num, measures, constraints
 
 
 def import_SJ2T_csv_known(input_file_path, traces, constraints, measures):
@@ -127,8 +130,8 @@ def import_SJ2T(input_file_path, input_file_format):
     :param input_file_format:
     """
     if input_file_format == 'csv':
-        traces, constraints, measures = retrieve_SJ2T_csv_data(input_file_path)
-        result = import_SJ2T_csv_known(input_file_path, traces, constraints, measures)
+        traces, constraints_num, measures, constraints = retrieve_SJ2T_csv_data(input_file_path)
+        result = import_SJ2T_csv_known(input_file_path, traces, constraints_num, measures)
         return result
     elif input_file_format == 'json':
         print("Json inport not yet implemented")
@@ -140,6 +143,7 @@ def import_SJ2T_labels_csv(input_file_path, threshold, constraints):
     """
         Import the labels of the result from SJ2T csv containing the measurement of every constraint in every trace.
         Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+    :param constraints:
     :param threshold:
     :param input_file_path:
     :return:
@@ -169,14 +173,14 @@ def import_SJ2T_labels_csv(input_file_path, threshold, constraints):
     return result, trace_index
 
 
-def import_SJ2T_labels(input_file_path, input_file_format, threshold):
+def import_SJ2T_labels(input_file_path, threshold):
     """
     Interface to import the labels of SJ2T results. it calls the appropriate function given the file format.
 
     :param threshold:
     :param input_file_path:
-    :param input_file_format:
     """
+    input_file_format = input_file_path.split(".")[-1]
     if input_file_format == 'csv':
         traces, constraints, measures = retrieve_SJ2T_csv_data(input_file_path)
         labels, traces_index = import_SJ2T_labels_csv(input_file_path, threshold, constraints)
