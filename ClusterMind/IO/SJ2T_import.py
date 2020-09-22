@@ -122,7 +122,46 @@ def import_SJ2T_csv_known(input_file_path, traces, constraints, measures):
     return result
 
 
-def import_SJ2T(input_file_path, input_file_format):
+def import_SJ2T_csv_known_boolean(input_file_path, traces, constraints, measures, threshold=0.9):
+    """
+        Import the result from SJ2T csv containing only if a constraint is satisfied in a trace (conf>threshold).
+        Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+    :param threshold:
+    :param input_file_path:
+    :param traces:
+    :param constraints:
+    :param measures:
+    :return:
+    """
+    print("Importing data...")
+    result = np.zeros((traces, constraints, measures))
+    # result = np.ndarray(shape=(1, 1, len(line) - 4)) # shape of the result ndarray
+    with open(input_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        it = 0
+        ic = 0
+        i = 0
+        for line in csv_reader:
+            # print(i / (1050 * 260))
+            i += 1
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                continue
+            if ic == constraints:
+                ic = 0
+                it += 1
+
+            # result[it][ic] = np.nan_to_num(np.array(line[3:])) # in case NaN and +-inf is a problem
+            result[it][ic] = np.array(int(float(line[4]) > threshold))
+            ic += 1
+    print("3D shape:" + str(result.shape))
+    return result
+
+
+def import_SJ2T(input_file_path, input_file_format, boolean=False):
     """
     Interface to import the SJ2T results. it calls the appropriate function given the file format.
 
@@ -131,8 +170,10 @@ def import_SJ2T(input_file_path, input_file_format):
     """
     if input_file_format == 'csv':
         traces, constraints_num, measures, constraints = retrieve_SJ2T_csv_data(input_file_path)
-        result = import_SJ2T_csv_known(input_file_path, traces, constraints_num, measures)
-        return result
+        if boolean:
+            return import_SJ2T_csv_known_boolean(input_file_path, traces, constraints_num, measures)
+        else:
+            return import_SJ2T_csv_known(input_file_path, traces, constraints_num, measures)
     elif input_file_format == 'json':
         print("Json inport not yet implemented")
     else:
@@ -182,8 +223,8 @@ def import_SJ2T_labels(input_file_path, threshold):
     """
     input_file_format = input_file_path.split(".")[-1]
     if input_file_format == 'csv':
-        traces, constraints, measures = retrieve_SJ2T_csv_data(input_file_path)
-        labels, traces_index = import_SJ2T_labels_csv(input_file_path, threshold, constraints)
+        traces, constraints_num, measures, constraints = retrieve_SJ2T_csv_data(input_file_path)
+        labels, traces_index = import_SJ2T_labels_csv(input_file_path, threshold, constraints_num)
         return labels, traces_index
     elif input_file_format == 'json':
         print("Json import not yet implemented")

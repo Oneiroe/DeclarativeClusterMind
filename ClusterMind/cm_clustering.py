@@ -52,51 +52,59 @@ def initialize_centroids(measures_num, centroids_num):
 def cluster_traces(input2D, traces, constraints, measures):
     ## CLUSTERING
 
-    # nc = constraints  # number of clusters
-    nc = 10  # number of clusters
-    # K-means
-    # centroids_init = initialize_centroids(measures, nc)
-    # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
-    try:
-        print("K-Kmeans...")
-        kmeans = cluster.KMeans(n_clusters=nc).fit(input2D)
-        print("Kmeans: \t\t" + str(kmeans.labels_))
-    except:
-        print("K-Means error:", sys.exc_info()[0])
+    nc = constraints  # number of clusters
+    # nc = 10  # number of clusters
+
+    # # K-means
+    # try:
+    #     print("K-Kmeans...")
+    #     # centroids_init = initialize_centroids(measures, nc)
+    #     # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
+    #     kmeans = cluster.KMeans(n_clusters=nc).fit(input2D)
+    #     print("Kmeans: \t\t" + str(kmeans.labels_))
+    #     return kmeans
+    # except:
+    #     print("K-Means error:", sys.exc_info()[0])
     # Affinity
     # try:
     #     affinity = cluster.AffinityPropagation(random_state=0).fit(input2D)
     #     print("Affinity: \t\t" + str(affinity.labels_))
+    #     return affinity
     # except:
     #     print("affinity error:", sys.exc_info()[0])
     # # mean-shift
     # try:
     #     mean_shift = cluster.MeanShift().fit(input2D)
     #     print("mean_shift: \t" + str(mean_shift.labels_))
+    #     return mean_shift
     # except:
     #     print("mean_shift error:", sys.exc_info()[0])
-    # # Agglomerative
+    # Agglomerative
     # try:
     #     agglomerative = cluster.AgglomerativeClustering(n_clusters=nc).fit(input2D)
     #     print("Agglomerative: \t" + str(agglomerative.labels_))
+    #     return agglomerative
     # except:
     #     print("Agglomerative error:", sys.exc_info()[0])
     # # Spectral
     # try:
     #     spectral = cluster.SpectralClustering(n_clusters=nc).fit(input2D)
     #     print("Spectral: \t\t" + str(spectral.labels_))
+    #     return spectral
     # except:
     #     print("Spectral error:", sys.exc_info()[0])
-    # # DBSCAN
-    # try:
-    #     dbscan = cluster.DBSCAN().fit(input2D)
-    #     print("DBSCAN: \t\t" + str(dbscan.labels_))
-    # except:
-    #     print("DBSCAN error:", sys.exc_info()[0])
+    # DBSCAN
+    try:
+        dbscan = cluster.DBSCAN().fit(input2D)
+        print("DBSCAN: \t\t" + str(dbscan.labels_))
+        return dbscan
+    except:
+        print("DBSCAN error:", sys.exc_info()[0])
     # # OPTICS
     # try:
     #     optics = cluster.OPTICS(min_samples=nc).fit(input2D)
     #     print("OPTICS: \t\t" + str(optics.labels_))
+    #     return optics
     # except:
     #     print("OPTICS error:", sys.exc_info()[0])
     # # birch
@@ -104,22 +112,22 @@ def cluster_traces(input2D, traces, constraints, measures):
     #     birch = cluster.Birch(n_clusters=nc).fit(input2D)
     #     # birch = cluster.Birch().fit(input2D)
     #     print("birch: \t\t\t" + str(birch.labels_))
+    #     return birch
     # except:
     #     print("birch error:", sys.exc_info()[0])
     # # gaussian
     # # gaussian = GaussianMixture(n_components=nc).fit(input2D)
     # # print("gaussian: \t\t" + str(gaussian.labels_))
 
-    print(">>>>>>>>>>>>K-Means labels validation")
-    return kmeans
-    # return birch
-
 
 def visualize_matrices(input2D, clusters):
-    centorids = clusters.cluster_centers_
+    try:
+        centorids = clusters.cluster_centers_
+        fig = px.imshow(centorids, title='Centroids')
+        fig.show()
+    except:
+        print("ERROR >>> Centroid visualization error:", sys.exc_info()[0])
 
-    fig = px.imshow(centorids, title='Centroids')
-    fig.show()
     fig2 = px.imshow(input2D, title='MMM-2D')
     fig2.show()
 
@@ -149,17 +157,18 @@ def visualize_results(clusters, labels, traces_index):
     fig.show()
 
 
-def plot_3d(df, name='labels'):
+def plot_3d(df, title='t-SNE 3D Clusters visualization', name='labels'):
     iris = px.data.iris()
-    fig = px.scatter_3d(df, x='x', y='y', z='z',color=name, opacity=0.5)
+    fig = px.scatter_3d(df, x='x', y='y', z='z', color=name, opacity=0.5, title=title)
 
     fig.update_traces(marker=dict(size=3))
     fig.show()
 
+
 def cluster_traces_from_file(file_path):
     # INPUT IMPORT
     file_format = file_path.split(".")[-1]
-    input3D = cmio.import_SJ2T(file_path, file_format)
+    input3D = cmio.import_SJ2T(file_path, file_format, boolean=False)
     input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
     print("2D shape:" + str(input2D.shape))
 
@@ -171,6 +180,7 @@ def cluster_traces_from_file(file_path):
     # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
 
     # reduce dimensions with PCA
+    # pca = None
     pca_variance = 0.98
     pca = PCA(pca_variance)
     pca.fit(input2D)
@@ -185,13 +195,16 @@ def cluster_traces_from_file(file_path):
 
     clusters = cluster_traces(input2D, traces, constraints, measures)
 
-    # 3d plot of data through t-SNE
+    # 3d plot of clusters through t-SNE
+    print(">>>>>>>>>>>> Visualization")
     names = ['x', 'y', 'z']
     matrix = TSNE(n_components=3).fit_transform(input2D)
     df_matrix = pd.DataFrame(matrix)
     df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
     df_matrix['labels'] = clusters.labels_
-    plot_3d(df_matrix)
+    # plot_3d(df_matrix)
+    # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
+    plot_3d(df_matrix[df_matrix.labels != -1])
 
     visualize_matrices(input2D, clusters)
 
@@ -204,9 +217,10 @@ def split_log(log, clusters):
     :param log:
     :param clusters:
     """
-    sub_logs = list(range(clusters.n_clusters))
+    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
+    sub_logs = list(range(n_clusters))
     # initialize sublogs with original log properties
-    for i in range(clusters.n_clusters):
+    for i in range(n_clusters):
         sub_log = EventLog()
         sub_log._attributes = log.attributes
         sub_log._classifiers = log.classifiers
@@ -238,7 +252,9 @@ def retrieve_cluster_statistics(clusters, log_file_path):
     log = pm.read_xes(log_file_path)
     logs = split_log(log, clusters)
     # export clusters logs to disk
-    for cluster_index in range(clusters.n_clusters):
+    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
+    # TODO export cluster label, not an incremental number, in order to have a precise match between these stats and the images
+    for cluster_index in range(n_clusters):
         xes_exporter.apply(logs[cluster_index],
                            './clustered-logs/' + log.attributes['concept:name'] + '_cluster-' + str(
                                cluster_index) + '.xes')
@@ -296,29 +312,33 @@ def retrieve_cluster_statistics(clusters, log_file_path):
 
 def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints):
     print(">>>>>visualize centroids constraints")
-    res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
-    for centroid_index in range(len(clusters.cluster_centers_)):
-        centroid = clusters.cluster_centers_[centroid_index]
-        c = pca.inverse_transform(centroid)
-        for i in range(len(constraints)):
-            if c[1 + measures * i] > threshold:
-                # confidence>threshold, it is the 2nd measure
-                res_matrix[centroid_index] += [1]
-            else:
-                res_matrix[centroid_index] += [0]
-    # export to csv
-    with open('./clustered-logs/centroids-constraints.csv', 'w') as output:
-        csv_output = csv.writer(output, delimiter=';')
-        # header
-        csv_output.writerow(constraints)
-        # values
-        csv_output.writerows(res_matrix)
+    try:
+        res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
+        for centroid_index in range(len(clusters.cluster_centers_)):
+            centroid = clusters.cluster_centers_[centroid_index]
+            c = pca.inverse_transform(centroid)
+            for i in range(len(constraints)):
+                if c[1 + measures * i] > threshold:
+                    # confidence>threshold, it is the 2nd measure
+                    res_matrix[centroid_index] += [1]
+                else:
+                    res_matrix[centroid_index] += [0]
+        # export to csv
+        with open('./clustered-logs/centroids-constraints.csv', 'w') as output:
+            csv_output = csv.writer(output, delimiter=';')
+            # header
+            csv_output.writerow(constraints)
+            # values
+            csv_output.writerows(res_matrix)
+    except:
+        print("ERROR >>> Centroid export error:", sys.exc_info()[0])
 
 
 if __name__ == '__main__':
     # file_path = sys.argv[1]
     # file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/test/result_m02_t05.csv"
-    sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-output.csv"
+    # sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-output.csv"
+    sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-SIMPLE-output.csv"
     log_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-log.xes"
 
     traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_file_path)
@@ -328,8 +348,8 @@ if __name__ == '__main__':
 
     # VISUALIZATION
     threshold = 0.95
-    # labels, traces_index = cmio.import_SJ2T_labels(sj2t_file_path, threshold)
-    # visualize_results(clusters, labels, traces_index)
+    labels, traces_index = cmio.import_SJ2T_labels(sj2t_file_path, threshold)
+    visualize_results(clusters, labels, traces_index)
     visualize_centroids_constraints(clusters, pca, threshold, measures, constraints)
 
     # STATS
