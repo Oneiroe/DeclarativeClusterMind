@@ -20,6 +20,8 @@ from pm4py.visualization.process_tree import visualizer as pt_visualizer
 from pm4py.visualization.petrinet import visualizer as pn_visualizer
 from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
+from scipy.cluster.hierarchy import dendrogram
+from matplotlib import pyplot as plt
 
 
 def block_diag_einsum(arr, num):
@@ -49,75 +51,88 @@ def initialize_centroids(measures_num, centroids_num):
     return block_diag_einsum(a, centroids_num)
 
 
-def cluster_traces(input2D, traces, constraints, measures):
+def cluster_traces(input2D, traces, constraints, measures, algorithm):
     ## CLUSTERING
 
     nc = constraints  # number of clusters
     # nc = 10  # number of clusters
 
-    # # K-means
-    # try:
-    #     print("K-Kmeans...")
-    #     # centroids_init = initialize_centroids(measures, nc)
-    #     # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
-    #     kmeans = cluster.KMeans(n_clusters=nc).fit(input2D)
-    #     print("Kmeans: \t\t" + str(kmeans.labels_))
-    #     return kmeans
-    # except:
-    #     print("K-Means error:", sys.exc_info()[0])
-    # Affinity
-    # try:
-    #     affinity = cluster.AffinityPropagation(random_state=0).fit(input2D)
-    #     print("Affinity: \t\t" + str(affinity.labels_))
-    #     return affinity
-    # except:
-    #     print("affinity error:", sys.exc_info()[0])
-    # # mean-shift
-    # try:
-    #     mean_shift = cluster.MeanShift().fit(input2D)
-    #     print("mean_shift: \t" + str(mean_shift.labels_))
-    #     return mean_shift
-    # except:
-    #     print("mean_shift error:", sys.exc_info()[0])
-    # Agglomerative
-    # try:
-    #     agglomerative = cluster.AgglomerativeClustering(n_clusters=nc).fit(input2D)
-    #     print("Agglomerative: \t" + str(agglomerative.labels_))
-    #     return agglomerative
-    # except:
-    #     print("Agglomerative error:", sys.exc_info()[0])
-    # # Spectral
-    # try:
-    #     spectral = cluster.SpectralClustering(n_clusters=nc).fit(input2D)
-    #     print("Spectral: \t\t" + str(spectral.labels_))
-    #     return spectral
-    # except:
-    #     print("Spectral error:", sys.exc_info()[0])
-    # DBSCAN
-    try:
-        dbscan = cluster.DBSCAN().fit(input2D)
-        print("DBSCAN: \t\t" + str(dbscan.labels_))
-        return dbscan
-    except:
-        print("DBSCAN error:", sys.exc_info()[0])
-    # # OPTICS
-    # try:
-    #     optics = cluster.OPTICS(min_samples=nc).fit(input2D)
-    #     print("OPTICS: \t\t" + str(optics.labels_))
-    #     return optics
-    # except:
-    #     print("OPTICS error:", sys.exc_info()[0])
-    # # birch
-    # try:
-    #     birch = cluster.Birch(n_clusters=nc).fit(input2D)
-    #     # birch = cluster.Birch().fit(input2D)
-    #     print("birch: \t\t\t" + str(birch.labels_))
-    #     return birch
-    # except:
-    #     print("birch error:", sys.exc_info()[0])
-    # # gaussian
-    # # gaussian = GaussianMixture(n_components=nc).fit(input2D)
-    # # print("gaussian: \t\t" + str(gaussian.labels_))
+    if (algorithm == 'kmeans'):
+        # K-means
+        try:
+            print("K-Kmeans...")
+            # centroids_init = initialize_centroids(measures, nc)
+            # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
+            kmeans = cluster.KMeans(n_clusters=nc).fit(input2D)
+            print("Kmeans: \t\t" + str(kmeans.labels_))
+            return kmeans
+        except:
+            print("K-Means error:", sys.exc_info()[0])
+    elif (algorithm == 'affinity'):
+        # Affinity
+        try:
+            affinity = cluster.AffinityPropagation(random_state=0).fit(input2D)
+            print("Affinity: \t\t" + str(affinity.labels_))
+            return affinity
+        except:
+            print("affinity error:", sys.exc_info()[0])
+    elif (algorithm == 'meanshift'):
+        # mean-shift
+        try:
+            mean_shift = cluster.MeanShift().fit(input2D)
+            print("mean_shift: \t" + str(mean_shift.labels_))
+            return mean_shift
+        except:
+            print("mean_shift error:", sys.exc_info()[0])
+    elif (algorithm == 'agglomerative'):
+        # Agglomerative hierarchical
+        try:
+            agglomerative = cluster.AgglomerativeClustering(n_clusters=nc).fit(input2D)
+            print("Agglomerative: \t" + str(agglomerative.labels_))
+            return agglomerative
+        except:
+            print("Agglomerative error:", sys.exc_info()[0])
+    elif (algorithm == 'spectral'):
+        # Spectral
+        try:
+            spectral = cluster.SpectralClustering(n_clusters=nc).fit(input2D)
+            print("Spectral: \t\t" + str(spectral.labels_))
+            return spectral
+        except:
+            print("Spectral error:", sys.exc_info()[0])
+    elif (algorithm == 'dbscan'):
+        # DBSCAN
+        try:
+            dbscan = cluster.DBSCAN().fit(input2D)
+            print("DBSCAN: \t\t" + str(dbscan.labels_))
+            return dbscan
+        except:
+            print("DBSCAN error:", sys.exc_info()[0])
+    elif (algorithm == 'optics'):
+        # OPTICS
+        try:
+            optics = cluster.OPTICS().fit(input2D)
+            print("OPTICS: \t\t" + str(optics.labels_))
+            return optics
+        except:
+            print("OPTICS error:", sys.exc_info()[0])
+    elif (algorithm == 'birch'):
+        # birch
+        try:
+            birch = cluster.Birch(n_clusters=nc).fit(input2D)
+            # birch = cluster.Birch().fit(input2D)
+            print("birch: \t\t\t" + str(birch.labels_))
+            return birch
+        except:
+            print("birch error:", sys.exc_info()[0])
+    elif (algorithm == 'gaussian'):  # DO NOT USE THIS!
+        # gaussian
+        gaussian = GaussianMixture(n_components=nc).fit(input2D)
+        print("gaussian: \t\t" + str(gaussian.labels_))
+    else:
+        print("Algorithm not recognized")
+        #     TODO rise exception and close
+        return None
 
 
 def visualize_matrices(input2D, clusters):
@@ -133,9 +148,12 @@ def visualize_matrices(input2D, clusters):
 
 
 def visualize_results(clusters, labels, traces_index):
+    # Visualize the contraints present in the clusters
     res_df = pd.DataFrame()
+    res_df_naive = pd.DataFrame()
     res = {}
     i = 0
+    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
     for c in clusters.labels_:
         res.setdefault(c, Counter())
         for label in labels[traces_index[i]]:
@@ -156,19 +174,58 @@ def visualize_results(clusters, labels, traces_index):
                  facet_col_wrap=10, facet_row_spacing=0.01, facet_col_spacing=0.01)
     fig.show()
 
+    # NAIVE show the constraints present in the clusters weighted for their frequency in other clusters
+    rules_cluster_frequency = Counter()
+    for cluster in res:
+        rules_cluster_frequency.update(res[cluster].keys())
+    for cluster in res:
+        for rule in res[cluster]:
+            value = n_clusters - rules_cluster_frequency[rule]
+            res_df_naive = res_df_naive.append({'cluster': cluster, 'rule': rule, 'amount': value},
+                                               ignore_index=True)
+    fig_naive = px.bar(res_df_naive,
+                       # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
+                       # fig = px.bar(res_df[res_df['cluster'].isin([12])],
+                       # barmode='group',
+                       title='Naive: rules in clusters weighted for the inverse of their frequency in other clusters (i.e. rule in just few clusters-Z high bar',
+                       x='rule', y='amount', facet_col='cluster', color='rule',
+                       facet_col_wrap=10, facet_row_spacing=0.01, facet_col_spacing=0.01)
+    fig_naive.show()
+
 
 def plot_3d(df, title='t-SNE 3D Clusters visualization', name='labels'):
-    iris = px.data.iris()
     fig = px.scatter_3d(df, x='x', y='y', z='z', color=name, opacity=0.5, title=title)
 
     fig.update_traces(marker=dict(size=3))
     fig.show()
 
 
-def cluster_traces_from_file(file_path):
+def plot_dendrogram(model, **kwargs):
+    # Create linkage matrix and then plot the dendrogram
+
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    linkage_matrix = np.column_stack([model.children_, model.distances_,
+                                      counts]).astype(float)
+
+    # Plot the corresponding dendrogram
+    dendrogram(linkage_matrix, **kwargs)
+
+
+def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=True):
     # INPUT IMPORT
     file_format = file_path.split(".")[-1]
-    input3D = cmio.import_SJ2T(file_path, file_format, boolean=False)
+    input3D = cmio.import_SJ2T(file_path, file_format, boolean=boolean_confidence)
     input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
     print("2D shape:" + str(input2D.shape))
 
@@ -193,18 +250,20 @@ def cluster_traces_from_file(file_path):
     constraints = input3D.shape[1]
     measures = input3D.shape[2]
 
-    clusters = cluster_traces(input2D, traces, constraints, measures)
+    clusters = cluster_traces(input2D, traces, constraints, measures, algorithm)
 
     # 3d plot of clusters through t-SNE
     print(">>>>>>>>>>>> Visualization")
     names = ['x', 'y', 'z']
-    matrix = TSNE(n_components=3).fit_transform(input2D)
+    # Default perplexity=30 perplexity suggested [5,50], n_iter=1000,
+    matrix = TSNE(n_components=3, perplexity=30, n_iter=50000).fit_transform(input2D)
     df_matrix = pd.DataFrame(matrix)
     df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
     df_matrix['labels'] = clusters.labels_
-    # plot_3d(df_matrix)
-    # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
-    plot_3d(df_matrix[df_matrix.labels != -1])
+    plot_3d(df_matrix)
+    if -1 in df_matrix.labels.array:
+        # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
+        plot_3d(df_matrix[df_matrix.labels != -1])
 
     visualize_matrices(input2D, clusters)
 
@@ -335,20 +394,52 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures, constrai
 
 
 if __name__ == '__main__':
-    # file_path = sys.argv[1]
-    # file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/test/result_m02_t05.csv"
-    # sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-output.csv"
-    sj2t_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-SIMPLE-output.csv"
-    log_file_path = "/home/alessio/Data/Phd/my_code/ClusterMind/input/SEPSIS-log.xes"
+    logs = ('BPIC12',  # 0
+            'BPIC13_cp',  # 1
+            'BPIC13_i',  # 2
+            'BPIC14_f',  # 3
+            'BPIC15_1f',  # 4
+            'BPIC15_2f',  # 5
+            'BPIC15_3f',  # 6
+            'BPIC15_4f',  # 7
+            'BPIC15_5f',  # 8
+            'BPIC17_f',  # 9
+            'RTFMP',  # 10
+            'SEPSIS'  # 11
+            )
+    log_name = logs[11]
+    clustering_algs = (
+        'kmeans',  # 0
+        'affinity',  # 1
+        'meanshift',  # 2
+        'agglomerative',  # 3
+        'spectral',  # 4
+        'dbscan',  # 5
+        'optics',  # 6
+        'birch',  # 7
+        'gaussian',  # 8 DO NOT USE THIS!
+    )
+    # sj2t_csv_file_path = "./input/" + log_name + "-output.csv"
+    # log_file_path = "./input/" + log_name + "-log.xes"
+    # clustering_algorithm = clustering_algs[6]
+    # boolean_confidence = True
 
-    traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_file_path)
+    sj2t_csv_file_path = sys.argv[1]
+    log_file_path = sys.argv[2]
+    clustering_algorithm = sys.argv[3]
+    boolean_confidence = sys.argv[4] == "True"
+
+    print(log_name)
+    print(clustering_algorithm)
+
+    traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
 
     # CLUSTERING
-    clusters, pca = cluster_traces_from_file(sj2t_file_path)
+    clusters, pca = cluster_traces_from_file(sj2t_csv_file_path, clustering_algorithm, boolean_confidence)
 
     # VISUALIZATION
     threshold = 0.95
-    labels, traces_index = cmio.import_SJ2T_labels(sj2t_file_path, threshold)
+    labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
     visualize_results(clusters, labels, traces_index)
     visualize_centroids_constraints(clusters, pca, threshold, measures, constraints)
 
