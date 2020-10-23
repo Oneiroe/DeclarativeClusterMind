@@ -29,9 +29,6 @@ OUTPUT_CHECK_JSON="input/"$LOG_NAME"-output.json"
 CLUSTERING_ALGORITHM="optics"
 BOOLEAN="True"
 
-# Simulate process
-#TODO
-
 # Discover process model (if not existing)
 echo "################################ DISCOVERY"
 if test -f "${MODEL}"; then
@@ -41,8 +38,8 @@ else
 fi
 
 # Simplify model, i.e., remove redundant constraints
-#echo "################################ SIMPLIFICATION"
-#java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+echo "################################ SIMPLIFICATION"
+java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
 
 # Retrieve measure
 echo "################################ MEASURE"
@@ -71,3 +68,5 @@ done
 # merge results
 python3 -m ClusterMind.utils.merge_clusters "clustered-logs/" "-output[MEAN].csv" "aggregated_result.csv"
 
+# Build DECLARE-Tree
+python3 -m DeclareTrees.declare_trees "clustered-logs/aggregated_result.csv" 0.8

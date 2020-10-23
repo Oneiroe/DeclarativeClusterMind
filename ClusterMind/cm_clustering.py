@@ -408,6 +408,8 @@ if __name__ == '__main__':
             'SEPSIS'  # 11
             )
     log_name = logs[11]
+    # print(log_name)
+
     clustering_algs = (
         'kmeans',  # 0
         'affinity',  # 1
@@ -429,7 +431,6 @@ if __name__ == '__main__':
     clustering_algorithm = sys.argv[3]
     boolean_confidence = sys.argv[4] == "True"
 
-    print(log_name)
     print(clustering_algorithm)
 
     traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)

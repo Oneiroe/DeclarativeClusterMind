@@ -3,7 +3,7 @@ import csv
 import os
 
 
-def merge_clusters(folder, files_suffix):
+def merge_clusters(folder, files_suffix, output_file="aggregated_result.csv"):
     result_map = {}
 
     for file in os.listdir(folder):
@@ -17,7 +17,7 @@ def merge_clusters(folder, files_suffix):
                     else:
                         result_map[line[0]] += [line[1]]
 
-    with open(folder + "aggregated_result.csv", 'w') as result:
+    with open(folder + output_file, 'w') as result:
         csv_result = csv.writer(result, delimiter=';')
         for key in result_map.keys():
             # print([key] + result_map[key])
@@ -25,6 +25,5 @@ def merge_clusters(folder, files_suffix):
 
 
 if __name__ == '__main__':
-    # files_base_path = sys.argv[1]
     print(sys.argv)
-    merge_clusters(sys.argv[1], sys.argv[2])
+    merge_clusters(sys.argv[1], sys.argv[2], sys.argv[3])
