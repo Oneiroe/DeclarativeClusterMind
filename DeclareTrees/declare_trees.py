@@ -60,7 +60,7 @@ class ClusterNode:
 
 
 def print_tree_graphviz(graph, node):
-    this_node_code=node.print_node_graphviz() + str(random())
+    this_node_code = node.print_node_graphviz() + str(random())
     if node.constraint:
         this_node = graph.node(this_node_code, label=node.print_node_graphviz())
     else:
@@ -109,9 +109,10 @@ It order the constraints from the most common across the cluster to the less one
     return priority_sorted_constraints, constraints_map, clusters_map
 
 
-def build_declare_tree(clusters_file, threshold):
+def build_declare_tree(clusters_file, threshold, output_file):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters
+    :param output_file:
     :param clusters_file:
     :param threshold:
     :return:
@@ -140,7 +141,7 @@ Builds the DECLARE tree according to the aggregated result of the clusters
     # result_tree.print_tree_bfs()
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, result_tree)
-    graph.render(filename='./DeclareTree.dot')
+    graph.render(filename=output_file)
 
     return result_tree
 
@@ -149,5 +150,5 @@ if __name__ == '__main__':
     print(sys.argv)
     clusters_file = sys.argv[1]
     constraints_threshold = float(sys.argv[2])
-    # TODO parametric output file
-    build_declare_tree(clusters_file, constraints_threshold)
+    output_file = sys.argv[3]
+    build_declare_tree(clusters_file, constraints_threshold, output_file)
