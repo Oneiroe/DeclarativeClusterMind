@@ -3,9 +3,9 @@ import math
 import os
 import sys
 from random import random
-
 import graphviz
 import pydot
+import ClusterMind.IO.SJ2T_import as cmio
 
 
 class ClusterNode:
@@ -73,9 +73,9 @@ def print_tree_graphviz(graph, node):
     return this_node_code
 
 
-def order_constraints(clusters):
+def order_constraints(clusters_file):
     """
-It order the constraints from the most common across the cluster to the less one
+    It orders the constraints from the most common across the cluster to the less one
     :param clusters:
     """
     priority_sorted_constraints = []
@@ -137,8 +137,7 @@ Builds the DECLARE tree according to the aggregated result of the clusters
                     new_leaves.add(leaf.nok)
         leaves = new_leaves
 
-    # result_tree.print_tree_dfs()
-    # result_tree.print_tree_bfs()
+    print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, result_tree)
     graph.render(filename=output_file)
@@ -146,9 +145,24 @@ Builds the DECLARE tree according to the aggregated result of the clusters
     return result_tree
 
 
-if __name__ == '__main__':
-    print(sys.argv)
-    clusters_file = sys.argv[1]
-    constraints_threshold = float(sys.argv[2])
-    output_file = sys.argv[3]
-    build_declare_tree(clusters_file, constraints_threshold, output_file)
+# # MAIN for CLUSTERs
+# if __name__ == '__main__':
+#     print(sys.argv)
+#     clusters_file = sys.argv[1]
+#     constraints_threshold = float(sys.argv[2])
+#     output_file = sys.argv[3]
+#     build_declare_tree(clusters_file, constraints_threshold, output_file)
+#
+# #  MAIN for LOGs
+# if __name__ == '__main__':
+#     print(sys.argv)
+#     sj2t_file = sys.argv[1]
+#     constraints_threshold = float(sys.argv[2])
+#     preprocessed_file = sys.argv[3]
+#     output_file = sys.argv[4]
+#
+#     # Pre-prcessing
+#     cmio.extract_detailed_perspective(sj2t_file, preprocessed_file)
+#
+#     # Declare tree
+#     build_declare_tree(preprocessed_file, constraints_threshold, output_file)

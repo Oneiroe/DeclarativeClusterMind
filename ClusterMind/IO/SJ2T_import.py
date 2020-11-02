@@ -1,4 +1,6 @@
 import csv
+import json
+
 import numpy as np
 
 
@@ -230,3 +232,131 @@ def import_SJ2T_labels(input_file_path, threshold):
         print("Json import not yet implemented")
     else:
         print("[" + str(input_file_format) + "]Format not recognised")
+
+
+def extract_aggregated_perspective(aggregated_json_file_path, output_path, perspective="Mean", measure="Confidence"):
+    """
+Extract the mean of the confidence of the aggregated result
+    :param aggregated_json_file_path: 
+    :param output_path: 
+    :param perspective: 
+    :param measure: 
+    """
+    with open(aggregated_json_file_path, 'r') as file:
+        jFile = json.load(file)
+        with open(output_path, 'w') as out_file:
+            writer = csv.writer(out_file, delimiter=';')
+            header = ["Constraint", "Confidence"]
+            # header = ["Constraint",
+            #           "Support",
+            #           "Confidence",
+            #           "Recall",
+            #           "Lovinger",
+            #           "Specificity",
+            #           "Accuracy",
+            #           "Lift",
+            #           "Leverage",
+            #           "Compliance",
+            #           "Odds Ratio",
+            #           "Gini Index",
+            #           "Certainty factor",
+            #           "Coverage",
+            #           "Prevalence",
+            #           "Added Value",
+            #           "Relative Risk",
+            #           "Jaccard",
+            #           "Ylue Q",
+            #           "Ylue Y",
+            #           "Klosgen",
+            #           "Conviction",
+            #           "Interestingness Weighting Dependency",
+            #           "Collective Strength",
+            #           "Laplace Correction",
+            #           "J Measure",
+            #           "One-way Support",
+            #           "Two-way Support",
+            #           "Two-way Support Variation",
+            #           "Linear Correlation Coefficient",
+            #           "Piatetsky-Shapiro",
+            #           "Cosine",
+            #           "Information Gain",
+            #           "Sebag-Schoenauer",
+            #           "Least Contradiction",
+            #           "Odd Multiplier",
+            #           "Example and Counterexample Rate",
+            #           "Zhang"
+            #           ]
+            writer.writerow(header)
+            for constraint in jFile:
+                row = [
+                    constraint,
+                    # jFile[constraint]['Support']['stats'][perspective],
+                    jFile[constraint]['Confidence']['stats'][perspective],
+                    # jFile[constraint]['Recall']['stats'][perspective],
+                    # jFile[constraint]['Lovinger']['stats'][perspective],
+                    # jFile[constraint]['Specificity']['stats'][perspective],
+                    # jFile[constraint]['Accuracy']['stats'][perspective],
+                    # jFile[constraint]['Lift']['stats'][perspective],
+                    # jFile[constraint]['Leverage']['stats'][perspective],
+                    # jFile[constraint]['Compliance']['stats'][perspective],
+                    # jFile[constraint]["Odds Ratio"]['stats'][perspective],
+                    # jFile[constraint]["Gini Index"]['stats'][perspective],
+                    # jFile[constraint]["Certainty factor"]['stats'][perspective],
+                    # jFile[constraint]["Coverage"]['stats'][perspective],
+                    # jFile[constraint]["Prevalence"]['stats'][perspective],
+                    # jFile[constraint]["Added Value"]['stats'][perspective],
+                    # jFile[constraint]["Relative Risk"]['stats'][perspective],
+                    # jFile[constraint]["Jaccard"]['stats'][perspective],
+                    # jFile[constraint]["Ylue Q"]['stats'][perspective],
+                    # jFile[constraint]["Ylue Y"]['stats'][perspective],
+                    # jFile[constraint]["Klosgen"]['stats'][perspective],
+                    # jFile[constraint]["Conviction"]['stats'][perspective],
+                    # jFile[constraint]["Interestingness Weighting Dependency"]['stats'][perspective],
+                    # jFile[constraint]["Collective Strength"]['stats'][perspective],
+                    # jFile[constraint]["Laplace Correction"]['stats'][perspective],
+                    # jFile[constraint]["J Measure"]['stats'][perspective],
+                    # jFile[constraint]["One-way Support"]['stats'][perspective],
+                    # jFile[constraint]["Two-way Support"]['stats'][perspective],
+                    # jFile[constraint]["Two-way Support Variation"]['stats'][perspective],
+                    # jFile[constraint]["Linear Correlation Coefficient"]['stats'][perspective],
+                    # jFile[constraint]["Piatetsky-Shapiro"]['stats'][perspective],
+                    # jFile[constraint]["Cosine"]['stats'][perspective],
+                    # jFile[constraint]["Information Gain"]['stats'][perspective],
+                    # jFile[constraint]["Sebag-Schoenauer"]['stats'][perspective],
+                    # jFile[constraint]["Least Contradiction"]['stats'][perspective],
+                    # jFile[constraint]["Odd Multiplier"]['stats'][perspective],
+                    # jFile[constraint]["Example and Counterexample Rate"]['stats'][perspective],
+                    # jFile[constraint]["Zhang"]['stats'][perspective]
+                ]
+                writer.writerow(row)
+
+
+def extract_detailed_perspective(detailed_csv_file_path, output_path, perspective="Mean", measure="Confidence"):
+    """
+Extract the mean of the confidence of the detailed traces result
+    :param detailed_csv_file_path:
+    :param output_path:
+    :param perspective:
+    :param measure:
+    """
+    temp_res = {}
+    traces_mapping = {}
+    trace_index = 0
+    with open(detailed_csv_file_path, 'r') as file:
+        csv_file = csv.DictReader(file, delimiter=';')
+        for line in csv_file:
+            temp_res.setdefault(line['Constraint'], {})
+            if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
+                trace_index += 1
+            temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line['Confidence']
+
+        header = ["Constraint"]
+        for trace in temp_res[list(temp_res.keys())[0]].keys():
+            header += [trace]
+
+        with open(output_path, 'w') as out_file:
+            writer = csv.DictWriter(out_file, fieldnames=header, delimiter=';')
+            writer.writeheader()
+            for constraint in temp_res:
+                temp_res[constraint].update({"Constraint": constraint})
+                writer.writerow(temp_res[constraint])

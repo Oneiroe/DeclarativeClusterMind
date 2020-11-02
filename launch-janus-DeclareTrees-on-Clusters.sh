@@ -62,11 +62,11 @@ for INPUT_LOG in "clustered-logs/"*.xes ; do
 #  -nanTraceValue,--nan-trace-value <number>
 
   #  keep only mean
-python3 singleAggregationPerspectiveFocusCSV.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
+  python3 singleAggregationPerspectiveFocusCSV.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
 done
 
 # merge results
 python3 -m ClusterMind.utils.merge_clusters "clustered-logs/" "-output[MEAN].csv" "aggregated_result.csv"
 
 # Build DECLARE-Tree
-python3 -m DeclareTrees.declare_trees "clustered-logs/aggregated_result.csv" 0.8 "clustered-logs/DeclareTree.dot"
+python3 -m DeclareTrees.trees_for_clusters "clustered-logs/aggregated_result.csv" 0.8 "clustered-logs/DeclareTree.dot"
