@@ -164,6 +164,13 @@ def visualize_results(clusters, labels, traces_index):
     for cluster in res.keys():
         for rule in res[cluster]:
             res_df = res_df.append({'cluster': cluster, 'rule': rule, 'amount': res[cluster][rule]}, ignore_index=True)
+
+    for cluster in res.keys():
+        # in case there are "empty" cluster, this cycle makes sure that they are included in the bar chart.
+        # note. an "empty" cluster is a cluster in which no rule is satisfied, thus it still brings information
+        if len(res[cluster]) == 0:
+            # Beware! Using the variable "rule" implies that in the previous cycle at least one rule is present in a cluster
+            res_df = res_df.append({'cluster': cluster, 'rule': rule, 'amount': 0}, ignore_index=True)
     # print(res)
     fig = px.bar(res_df,
                  # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
@@ -183,6 +190,10 @@ def visualize_results(clusters, labels, traces_index):
             value = n_clusters - rules_cluster_frequency[rule]
             res_df_naive = res_df_naive.append({'cluster': cluster, 'rule': rule, 'amount': value},
                                                ignore_index=True)
+    for cluster in res:
+        if len(res[cluster]) == 0:
+            # Beware! Using the variable "rule" implies that in the previous cycle at least one rule is present in a cluster
+            res_df_naive = res_df_naive.append({'cluster': cluster, 'rule': rule, 'amount': 0}, ignore_index=True)
     fig_naive = px.bar(res_df_naive,
                        # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
                        # fig = px.bar(res_df[res_df['cluster'].isin([12])],
