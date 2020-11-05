@@ -305,7 +305,7 @@ def split_log(log, clusters):
     return sub_logs
 
 
-def retrieve_cluster_statistics(clusters, log_file_path):
+def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     """
      retrieve the statistics of the sub-logs of each clusters.
      Specifically, it retrieves for each cluster:
@@ -326,10 +326,10 @@ def retrieve_cluster_statistics(clusters, log_file_path):
     # TODO export cluster label, not an incremental number, in order to have a precise match between these stats and the images
     for cluster_index in range(n_clusters):
         xes_exporter.apply(logs[cluster_index],
-                           './clustered-logs/' + log.attributes['concept:name'] + '_cluster-' + str(
+                           output_folder + log.attributes['concept:name'] + '_cluster-' + str(
                                cluster_index) + '.xes')
     # retrieve and output stats
-    with open('./clustered-logs/' + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
+    with open(output_folder + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
         csv_out = csv.writer(output, delimiter=';')
         csv_out.writerow([
             'CLUSTER_NUM',
@@ -380,7 +380,7 @@ def retrieve_cluster_statistics(clusters, log_file_path):
     pass
 
 
-def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints):
+def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder):
     print(">>>>>visualize centroids constraints")
     try:
         res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
@@ -394,7 +394,7 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures, constrai
                 else:
                     res_matrix[centroid_index] += [0]
         # export to csv
-        with open('./clustered-logs/centroids-constraints.csv', 'w') as output:
+        with open(output_folder+'/centroids-constraints.csv', 'w') as output:
             csv_output = csv.writer(output, delimiter=';')
             # header
             csv_output.writerow(constraints)
@@ -441,6 +441,7 @@ if __name__ == '__main__':
     log_file_path = sys.argv[2]
     clustering_algorithm = sys.argv[3]
     boolean_confidence = sys.argv[4] == "True"
+    output_folder = sys.argv[5]
 
     print(clustering_algorithm)
 
@@ -453,7 +454,7 @@ if __name__ == '__main__':
     threshold = 0.95
     labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
     visualize_results(clusters, labels, traces_index)
-    visualize_centroids_constraints(clusters, pca, threshold, measures, constraints)
+    visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder)
 
     # STATS
-    retrieve_cluster_statistics(clusters, log_file_path)
+    retrieve_cluster_statistics(clusters, log_file_path, output_folder)
