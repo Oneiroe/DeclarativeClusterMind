@@ -136,6 +136,7 @@ def cluster_traces(input2D, traces, constraints, measures, algorithm):
 
 
 def visualize_matrices(input2D, clusters):
+    print(">>>> Visualize heatmap of MMM")
     try:
         centorids = clusters.cluster_centers_
         fig = px.imshow(centorids, title='Centroids')
@@ -148,7 +149,7 @@ def visualize_matrices(input2D, clusters):
 
 
 def visualize_results(clusters, labels, traces_index):
-    # Visualize the contraints present in the clusters
+    print(">>>>> Visualize constraints present in the clusters")
     res_df = pd.DataFrame()
     res_df_naive = pd.DataFrame()
     res = {}
@@ -171,7 +172,7 @@ def visualize_results(clusters, labels, traces_index):
         if len(res[cluster]) == 0:
             # Beware! Using the variable "rule" implies that in the previous cycle at least one rule is present in a cluster
             res_df = res_df.append({'cluster': cluster, 'rule': rule, 'amount': 0}, ignore_index=True)
-    # print(res)
+    print("construct fig")
     fig = px.bar(res_df,
                  # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
                  # fig = px.bar(res_df[res_df['cluster'].isin([12])],
@@ -179,6 +180,7 @@ def visualize_results(clusters, labels, traces_index):
                  title='Result check',
                  x='rule', y='amount', facet_col='cluster', color='rule',
                  facet_col_wrap=10, facet_row_spacing=0.01, facet_col_spacing=0.01)
+    print("render fig")
     fig.show()
 
     # NAIVE show the constraints present in the clusters weighted for their frequency in other clusters
@@ -209,6 +211,21 @@ def plot_3d(df, title='t-SNE 3D Clusters visualization', name='labels'):
 
     fig.update_traces(marker=dict(size=3))
     fig.show()
+
+
+def plot_tSNE_3d(input2D):
+    # 3d plot of clusters through t-SNE
+    print(">>>>> tSNE 3D visualization")
+    names = ['x', 'y', 'z']
+    # Default perplexity=30 perplexity suggested [5,50], n_iter=1000,
+    matrix = TSNE(n_components=3, perplexity=30, n_iter=50000).fit_transform(input2D)
+    df_matrix = pd.DataFrame(matrix)
+    df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
+    df_matrix['labels'] = clusters.labels_
+    plot_3d(df_matrix)
+    if -1 in df_matrix.labels.array:
+        # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
+        plot_3d(df_matrix[df_matrix.labels != -1])
 
 
 def plot_dendrogram(model, **kwargs):
@@ -263,22 +280,7 @@ def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=T
 
     clusters = cluster_traces(input2D, traces, constraints, measures, algorithm)
 
-    # 3d plot of clusters through t-SNE
-    print(">>>>>>>>>>>> Visualization")
-    names = ['x', 'y', 'z']
-    # Default perplexity=30 perplexity suggested [5,50], n_iter=1000,
-    matrix = TSNE(n_components=3, perplexity=30, n_iter=50000).fit_transform(input2D)
-    df_matrix = pd.DataFrame(matrix)
-    df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
-    df_matrix['labels'] = clusters.labels_
-    plot_3d(df_matrix)
-    if -1 in df_matrix.labels.array:
-        # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
-        plot_3d(df_matrix[df_matrix.labels != -1])
-
-    visualize_matrices(input2D, clusters)
-
-    return clusters, pca
+    return clusters, pca, input2D
 
 
 def split_log(log, clusters):
@@ -394,7 +396,7 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures, constrai
                 else:
                     res_matrix[centroid_index] += [0]
         # export to csv
-        with open(output_folder+'/centroids-constraints.csv', 'w') as output:
+        with open(output_folder + '/centroids-constraints.csv', 'w') as output:
             csv_output = csv.writer(output, delimiter=';')
             # header
             csv_output.writerow(constraints)
@@ -442,19 +444,27 @@ if __name__ == '__main__':
     clustering_algorithm = sys.argv[3]
     boolean_confidence = sys.argv[4] == "True"
     output_folder = sys.argv[5]
+    visualization_flag = sys.argv[6] == "True"
 
     print(clustering_algorithm)
 
     traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
 
     # CLUSTERING
-    clusters, pca = cluster_traces_from_file(sj2t_csv_file_path, clustering_algorithm, boolean_confidence)
+    clusters, pca, input2D = cluster_traces_from_file(sj2t_csv_file_path, clustering_algorithm, boolean_confidence)
 
     # VISUALIZATION
-    threshold = 0.95
-    labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
-    visualize_results(clusters, labels, traces_index)
-    visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder)
+    if visualization_flag:
+        print(">>>>>>>>>>>> Visualization")
+        threshold = 0.95
 
+        plot_tSNE_3d(input2D)
+        visualize_matrices(input2D, clusters)
+
+        labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
+        visualize_results(clusters, labels, traces_index)
+        visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder)
+    else:
+        print(">>>>>>>>>>>> Visualization SKIPPED")
     # STATS
     retrieve_cluster_statistics(clusters, log_file_path, output_folder)
