@@ -13,7 +13,7 @@ def merge_clusters(folder, files_suffix, output_file="aggregated_result.csv"):
                 for line in cluster_csv:
                     result_map.setdefault(line[0], [])
                     if line[0] == "Constraint":
-                        result_map[line[0]] += ["Cluster-" + str(file.split(".xes-output[MEAN].csv")[0].split('-')[-1])]
+                        result_map[line[0]] += ["Cluster_" + str(file.split(".xes-output[MEAN].csv")[0].split('cluster_')[-1])]
                     else:
                         result_map[line[0]] += [line[1]]
 

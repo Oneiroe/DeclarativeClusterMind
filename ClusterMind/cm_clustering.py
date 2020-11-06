@@ -57,6 +57,10 @@ def cluster_traces(input2D, traces, constraints, measures, algorithm):
     nc = constraints  # number of clusters
     # nc = 10  # number of clusters
 
+    if nc > len(input2D):
+        # when the number of clusters is greater than the number of traces algorithms like k-means trow exceptions
+        nc = len(input2D)
+
     if (algorithm == 'kmeans'):
         # K-means
         try:
@@ -290,9 +294,11 @@ def split_log(log, clusters):
     :param clusters:
     """
     n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
-    sub_logs = list(range(n_clusters))
+    # sub_logs = list(range(n_clusters))
+    sub_logs = dict.fromkeys(set(clusters.labels_), [])
     # initialize sublogs with original log properties
-    for i in range(n_clusters):
+    # for i in range(n_clusters):
+    for i in set(clusters.labels_):
         sub_log = EventLog()
         sub_log._attributes = log.attributes
         sub_log._classifiers = log.classifiers
@@ -324,11 +330,9 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     log = pm.read_xes(log_file_path)
     logs = split_log(log, clusters)
     # export clusters logs to disk
-    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
-    # TODO export cluster label, not an incremental number, in order to have a precise match between these stats and the images
-    for cluster_index in range(n_clusters):
+    for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
-                           output_folder + log.attributes['concept:name'] + '_cluster-' + str(
+                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
                                cluster_index) + '.xes')
     # retrieve and output stats
     with open(output_folder + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
@@ -346,32 +350,32 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
             'TASKS-NUM',
             'TASKS'
         ])
-        cluster_index = 0
-        for s_log in logs:
-            traces_num = len(s_log)
-            events_avg = sum((len(i) for i in s_log)) / len(s_log)
-            events_min = min(len(i) for i in s_log)
-            events_max = max(len(i) for i in s_log)
-            unique_tasks = set(e['concept:name'] for t in s_log for e in t)
+        for cluster_index in logs:
+            current_s_log = logs[cluster_index]
+            traces_num = len(current_s_log)
+            events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
+            events_min = min(len(i) for i in current_s_log)
+            events_max = max(len(i) for i in current_s_log)
+            unique_tasks = set(e['concept:name'] for t in current_s_log for e in t)
             unique_tasks_num = len(unique_tasks)
-            duration_median = stats.case_statistics.get_median_caseduration(s_log)
-            duration_min = min(stats.case_statistics.get_all_casedurations(s_log))
-            duration_max = max(stats.case_statistics.get_all_casedurations(s_log))
-            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(s_log)
+            duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
+            duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
+            duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
+            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
             csv_out.writerow(
                 [cluster_index, traces_num, events_avg, events_min, events_max,
                  duration_median, duration_min, duration_max, case_arrival_avg,
                  unique_tasks_num, unique_tasks])
-            cluster_index += 1
+
 
     # Imperative models
     imperative = False
     if imperative:
         print("imperative models")
-        for s_log in logs:
+        for cluster_index in logs:
             # net, initial_marking, final_marking = inductive_miner.apply(s_log)
             # tree = inductive_miner.apply_tree(s_log)
-            heu_net = heuristics_miner.apply_heu(s_log, parameters={
+            heu_net = heuristics_miner.apply_heu(logs[cluster_index], parameters={
                 heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
             # gviz = pn_visualizer.apply(net)
             # pt_visualizer.view(gviz)
@@ -456,11 +460,11 @@ if __name__ == '__main__':
     # VISUALIZATION
     if visualization_flag:
         print(">>>>>>>>>>>> Visualization")
-        threshold = 0.95
 
         plot_tSNE_3d(input2D)
         visualize_matrices(input2D, clusters)
 
+        threshold = 0.95
         labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
         visualize_results(clusters, labels, traces_index)
         visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder)
