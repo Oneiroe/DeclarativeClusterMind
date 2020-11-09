@@ -73,6 +73,23 @@ def print_tree_graphviz(graph, node):
     return this_node_code
 
 
+def minimize_tree(node):
+    """
+    SIDE EFFECT! Remove the nodes with only one child.
+    :param node:
+    """
+    new_node = node
+    if node.ok:
+        new_node.ok = minimize_tree(node.ok)
+    if node.nok:
+        new_node.nok = minimize_tree(node.nok)
+    if node.ok and not node.nok:
+        return new_node.ok
+    if not node.ok and node.nok:
+        return new_node.nok
+    return new_node
+
+
 def order_constraints_overall(clusters_file):
     """
     It orders the constraints from the most common across the cluster to the less one from the SJ2T results
@@ -109,10 +126,11 @@ def order_constraints_overall(clusters_file):
     return priority_sorted_constraints, constraints_map, clusters_map
 
 
-def build_declare_tree(clusters_file, threshold, output_file):
+def build_declare_tree(clusters_file, threshold, output_file, minimize=False):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are used in total frequency order from the most common among the clusters to the rarest one
+    :param minimize:
     :param output_file:
     :param clusters_file:
     :param threshold:
@@ -137,6 +155,9 @@ Constraints are used in total frequency order from the most common among the clu
                 if leaf.nok:
                     new_leaves.add(leaf.nok)
         leaves = new_leaves
+
+    if minimize:
+        minimize_tree(result_tree)
 
     print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
@@ -220,10 +241,11 @@ def get_most_common_constraint(cluster_table, clusters, used_constraints):
     return order_clusters_table(view)[1][0]
 
 
-def build_declare_tree_dynamic(clusters_file, threshold, output_file):
+def build_declare_tree_dynamic(clusters_file, threshold, output_file, minimize=False):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
+    :param minimize:
     :param output_file:
     :param clusters_file:
     :param threshold:
@@ -258,6 +280,9 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                 leaf.nok.used_constraints.add(leaf.constraint)
                 new_leaves.add(leaf.nok)
         leaves = new_leaves
+
+    if minimize:
+        minimize_tree(result_tree)
 
     print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
