@@ -67,9 +67,11 @@ def print_tree_graphviz(graph, node):
         this_node = graph.node(this_node_code, label=node.print_node_graphviz(), fillcolor="lightblue", style='filled')
 
     if node.ok:
-        graph.edge(this_node_code, print_tree_graphviz(graph, node.ok), label="YES", color="green")
+        next_left = print_tree_graphviz(graph, node.ok)
+        graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
     if node.nok:
-        graph.edge(this_node_code, print_tree_graphviz(graph, node.nok), label="NO", color="red")
+        next_right = print_tree_graphviz(graph, node.nok)
+        graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
     return this_node_code
 
 

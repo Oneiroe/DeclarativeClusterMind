@@ -7,7 +7,7 @@ if __name__ == '__main__':
     clusters_file = sys.argv[1]
     constraints_threshold = float(sys.argv[2])
     output_file = sys.argv[3]
-    branching_policy = sys.argv[4]  # [frequency, dynamic, minimal]
+    branching_policy = sys.argv[4]  # [frequency, dynamic]
     minimize_flag = sys.argv[5] == "True"  # single choice splits are discarded, keep only the separating constraints
     # frequency: total frequency among all the clusters (each level in each branch splits with the same constraint)
     # dynamic: each split is given by the most frequent constraint among the clusters in the branch
@@ -16,4 +16,4 @@ if __name__ == '__main__':
     elif branching_policy == "dynamic":
         build_declare_tree_dynamic(clusters_file, constraints_threshold, output_file,minimize_flag)
     else:
-        print("Branching policy not recognized. Supported policies: [frequency, dynamic, minimal] ")
+        print("Branching policy not recognized. Supported policies: [frequency, dynamic] ")
