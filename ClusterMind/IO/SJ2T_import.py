@@ -234,19 +234,23 @@ def import_SJ2T_labels(input_file_path, threshold):
         print("[" + str(input_file_format) + "]Format not recognised")
 
 
-def extract_aggregated_perspective(aggregated_json_file_path, output_path, perspective="Mean", measure="Confidence"):
+def extract_aggregated_perspective(aggregated_json_file_path, output_path, perspective="Mean", measures={"Confidence"}):
     """
 Extract the mean of the confidence of the aggregated result
     :param aggregated_json_file_path: 
     :param output_path: 
     :param perspective: 
-    :param measure: 
+    :param measures:
     """
     with open(aggregated_json_file_path, 'r') as file:
         jFile = json.load(file)
         with open(output_path, 'w') as out_file:
             writer = csv.writer(out_file, delimiter=';')
-            header = ["Constraint", "Confidence"]
+
+            header = ["Constraint"]
+            for measure in sorted(measures):
+                header += [measure]
+
             # header = ["Constraint",
             #           "Support",
             #           "Confidence",
@@ -288,46 +292,49 @@ Extract the mean of the confidence of the aggregated result
             #           ]
             writer.writerow(header)
             for constraint in jFile:
-                row = [
-                    constraint,
-                    # jFile[constraint]['Support']['stats'][perspective],
-                    jFile[constraint]['Confidence']['stats'][perspective],
-                    # jFile[constraint]['Recall']['stats'][perspective],
-                    # jFile[constraint]['Lovinger']['stats'][perspective],
-                    # jFile[constraint]['Specificity']['stats'][perspective],
-                    # jFile[constraint]['Accuracy']['stats'][perspective],
-                    # jFile[constraint]['Lift']['stats'][perspective],
-                    # jFile[constraint]['Leverage']['stats'][perspective],
-                    # jFile[constraint]['Compliance']['stats'][perspective],
-                    # jFile[constraint]["Odds Ratio"]['stats'][perspective],
-                    # jFile[constraint]["Gini Index"]['stats'][perspective],
-                    # jFile[constraint]["Certainty factor"]['stats'][perspective],
-                    # jFile[constraint]["Coverage"]['stats'][perspective],
-                    # jFile[constraint]["Prevalence"]['stats'][perspective],
-                    # jFile[constraint]["Added Value"]['stats'][perspective],
-                    # jFile[constraint]["Relative Risk"]['stats'][perspective],
-                    # jFile[constraint]["Jaccard"]['stats'][perspective],
-                    # jFile[constraint]["Ylue Q"]['stats'][perspective],
-                    # jFile[constraint]["Ylue Y"]['stats'][perspective],
-                    # jFile[constraint]["Klosgen"]['stats'][perspective],
-                    # jFile[constraint]["Conviction"]['stats'][perspective],
-                    # jFile[constraint]["Interestingness Weighting Dependency"]['stats'][perspective],
-                    # jFile[constraint]["Collective Strength"]['stats'][perspective],
-                    # jFile[constraint]["Laplace Correction"]['stats'][perspective],
-                    # jFile[constraint]["J Measure"]['stats'][perspective],
-                    # jFile[constraint]["One-way Support"]['stats'][perspective],
-                    # jFile[constraint]["Two-way Support"]['stats'][perspective],
-                    # jFile[constraint]["Two-way Support Variation"]['stats'][perspective],
-                    # jFile[constraint]["Linear Correlation Coefficient"]['stats'][perspective],
-                    # jFile[constraint]["Piatetsky-Shapiro"]['stats'][perspective],
-                    # jFile[constraint]["Cosine"]['stats'][perspective],
-                    # jFile[constraint]["Information Gain"]['stats'][perspective],
-                    # jFile[constraint]["Sebag-Schoenauer"]['stats'][perspective],
-                    # jFile[constraint]["Least Contradiction"]['stats'][perspective],
-                    # jFile[constraint]["Odd Multiplier"]['stats'][perspective],
-                    # jFile[constraint]["Example and Counterexample Rate"]['stats'][perspective],
-                    # jFile[constraint]["Zhang"]['stats'][perspective]
-                ]
+                row = [constraint]
+                for measure in sorted(measures):
+                    row += [jFile[constraint][measure]['stats'][perspective]]
+                # row = [
+                #     constraint,
+                #     # jFile[constraint]['Support']['stats'][perspective],
+                #     jFile[constraint]['Confidence']['stats'][perspective],
+                #     # jFile[constraint]['Recall']['stats'][perspective],
+                #     # jFile[constraint]['Lovinger']['stats'][perspective],
+                #     # jFile[constraint]['Specificity']['stats'][perspective],
+                #     # jFile[constraint]['Accuracy']['stats'][perspective],
+                #     # jFile[constraint]['Lift']['stats'][perspective],
+                #     # jFile[constraint]['Leverage']['stats'][perspective],
+                #     # jFile[constraint]['Compliance']['stats'][perspective],
+                #     # jFile[constraint]["Odds Ratio"]['stats'][perspective],
+                #     # jFile[constraint]["Gini Index"]['stats'][perspective],
+                #     # jFile[constraint]["Certainty factor"]['stats'][perspective],
+                #     # jFile[constraint]["Coverage"]['stats'][perspective],
+                #     # jFile[constraint]["Prevalence"]['stats'][perspective],
+                #     # jFile[constraint]["Added Value"]['stats'][perspective],
+                #     # jFile[constraint]["Relative Risk"]['stats'][perspective],
+                #     # jFile[constraint]["Jaccard"]['stats'][perspective],
+                #     # jFile[constraint]["Ylue Q"]['stats'][perspective],
+                #     # jFile[constraint]["Ylue Y"]['stats'][perspective],
+                #     # jFile[constraint]["Klosgen"]['stats'][perspective],
+                #     # jFile[constraint]["Conviction"]['stats'][perspective],
+                #     # jFile[constraint]["Interestingness Weighting Dependency"]['stats'][perspective],
+                #     # jFile[constraint]["Collective Strength"]['stats'][perspective],
+                #     # jFile[constraint]["Laplace Correction"]['stats'][perspective],
+                #     # jFile[constraint]["J Measure"]['stats'][perspective],
+                #     # jFile[constraint]["One-way Support"]['stats'][perspective],
+                #     # jFile[constraint]["Two-way Support"]['stats'][perspective],
+                #     # jFile[constraint]["Two-way Support Variation"]['stats'][perspective],
+                #     # jFile[constraint]["Linear Correlation Coefficient"]['stats'][perspective],
+                #     # jFile[constraint]["Piatetsky-Shapiro"]['stats'][perspective],
+                #     # jFile[constraint]["Cosine"]['stats'][perspective],
+                #     # jFile[constraint]["Information Gain"]['stats'][perspective],
+                #     # jFile[constraint]["Sebag-Schoenauer"]['stats'][perspective],
+                #     # jFile[constraint]["Least Contradiction"]['stats'][perspective],
+                #     # jFile[constraint]["Odd Multiplier"]['stats'][perspective],
+                #     # jFile[constraint]["Example and Counterexample Rate"]['stats'][perspective],
+                #     # jFile[constraint]["Zhang"]['stats'][perspective]
+                # ]
                 writer.writerow(row)
 
 
