@@ -7,6 +7,11 @@ import graphviz
 import pydot
 import ClusterMind.IO.SJ2T_import as cmio
 
+from pm4py.objects.log.log import EventLog
+import pm4py as pm
+from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+import pm4py.statistics.traces.log as stats
+
 
 class ClusterNode:
     def __init__(self, constraint=None, threshold=0.8):
@@ -92,9 +97,10 @@ def minimize_tree(node):
     return new_node
 
 
-def order_constraints_overall(clusters_file):
+def order_constraints_overall(clusters_file, reverse=False):
     """
     It orders the constraints from the most common across the cluster to the less one from the SJ2T results
+    :param reverse: True if descending order, False for Ascending
     :param clusters:
     """
     priority_sorted_constraints = []
@@ -119,16 +125,17 @@ def order_constraints_overall(clusters_file):
                     constraints_map[constraint]['SUM'] += value
 
     # constraint names and values
-    # priority_sorted_constraints = sorted([(i, constraints_map[i]['SUM']) for i in constraints_map],
-    #                                      key=lambda item: item[1], reverse=True)
+    priority_sorted_constraints = sorted([(i, constraints_map[i]['SUM']) for i in constraints_map],
+                                         key=lambda item: item[1], reverse=reverse)
+    print(priority_sorted_constraints)
     # only constraints names
     priority_sorted_constraints = [f[0] for f in sorted([(i, constraints_map[i]['SUM']) for i in constraints_map],
-                                                        key=lambda item: item[1], reverse=True)]
+                                                        key=lambda item: item[1], reverse=reverse)]
     #  TODO remove field "SUM" from each item in constraints_map
     return priority_sorted_constraints, constraints_map, clusters_map
 
 
-def build_declare_tree(clusters_file, threshold, output_file, minimize=False):
+def build_declare_tree(clusters_file, threshold, output_file, minimize=False, reverse=True):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are used in total frequency order from the most common among the clusters to the rarest one
@@ -138,7 +145,7 @@ Constraints are used in total frequency order from the most common among the clu
     :param threshold:
     :return:
     """
-    ordered_constraints, constraints_map, clusters_map = order_constraints_overall(clusters_file)
+    ordered_constraints, constraints_map, clusters_map = order_constraints_overall(clusters_file, reverse)
     # root
     result_tree = ClusterNode(threshold=threshold)
     result_tree.clusters = set(clusters_map.keys())
@@ -211,16 +218,16 @@ def get_clusters_table(clusters_file):
     return clusters_table, clusters_index, constraints_index
 
 
-def order_clusters_table(clusters_table):
+def order_clusters_table(clusters_table, reverse=True):
     """
     Given a matrix [constrain X clusters] It orders the constraints by frequency across the clusters
     :param clusters_table:
     """
-    clusters_table = [clusters_table[0]] + sorted(clusters_table[1:], key=lambda item: item[-1], reverse=True)
+    clusters_table = [clusters_table[0]] + sorted(clusters_table[1:], key=lambda item: item[-1], reverse=reverse)
     return clusters_table
 
 
-def get_most_common_constraint(cluster_table, clusters, used_constraints):
+def get_most_common_constraint(cluster_table, clusters, used_constraints, reverse):
     view = []
     header = True
     for row in cluster_table:
@@ -240,10 +247,10 @@ def get_most_common_constraint(cluster_table, clusters, used_constraints):
         else:
             view_row += [sum_row]
         view += [view_row]
-    return order_clusters_table(view)[1][0]
+    return order_clusters_table(view, reverse)[1][0]
 
 
-def build_declare_tree_dynamic(clusters_file, threshold, output_file, minimize=False):
+def build_declare_tree_dynamic(clusters_file, threshold, output_file, minimize=False, reverse=True):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
@@ -269,7 +276,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
             if len(leaf.clusters) == 1 or len(leaf.used_constraints) == len(constraints_indices):
                 continue
             #       split according to most frequent constraint
-            leaf.constraint = get_most_common_constraint(clusters_table, leaf.clusters, leaf.used_constraints)
+            leaf.constraint = get_most_common_constraint(clusters_table, leaf.clusters, leaf.used_constraints, reverse)
             for cluster_in_node in leaf.clusters:
                 leaf.insert_child(cluster_in_node, clusters_table[constraints_indices[leaf.constraint]][
                     clusters_indices[cluster_in_node]])
@@ -292,3 +299,48 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     graph.render(filename=output_file)
 
     return result_tree
+
+
+def split_log(log, clusters):
+    """
+    WIP
+    Split the log into sub-logs according to the clusters, returns the list of logs
+    :param log:
+    :param clusters:
+    """
+    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
+    # sub_logs = list(range(n_clusters))
+    sub_logs = dict.fromkeys(set(clusters.labels_), [])
+    # initialize sublogs with original log properties
+    # for i in range(n_clusters):
+    for i in set(clusters.labels_):
+        sub_log = EventLog()
+        sub_log._attributes = log.attributes
+        sub_log._classifiers = log.classifiers
+        sub_log._extensions = log.extensions
+        sub_log._omni = log.omni_present
+        sub_logs[i] = sub_log
+    trace_index = 0
+    # put traces in sub-logs
+    for trace in log:
+        sub_logs[clusters.labels_[trace_index]].append(trace)
+        trace_index += 1
+    return sub_logs
+
+
+def build_clusters_from_branches(tree_root, original_log_file, output_folder):
+    """
+    WIP
+It build clusters sub-logs from the leaves of the tree
+    :param tree_root:
+    """
+    # Define clusters
+    clusters = {}
+    #
+    log = pm.read_xes(original_log_file)
+    logs = split_log(log, clusters)
+    # export clusters logs to disk
+    for cluster_index in logs:
+        xes_exporter.apply(logs[cluster_index],
+                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
+                               cluster_index) + '.xes')

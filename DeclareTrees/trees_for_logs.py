@@ -11,14 +11,16 @@ if __name__ == '__main__':
     output_file = sys.argv[4]
     branching_policy = sys.argv[5]  # [frequency, dynamic]
     minimization_flag = sys.argv[6] == "True"
+    reverse_flag = sys.argv[7] == "True"  # True descending order, Flase: ascending order
 
     # Pre-prcessing
     cmio.extract_detailed_perspective(sj2t_file, preprocessed_file)
 
     # Declare tree
     if branching_policy == "frequency":
-        build_declare_tree(preprocessed_file, constraints_threshold, output_file, minimization_flag)
+        build_declare_tree(preprocessed_file, constraints_threshold, output_file, minimization_flag, reverse_flag)
     elif branching_policy == "dynamic":
-        build_declare_tree_dynamic(preprocessed_file, constraints_threshold, output_file, minimization_flag)
+        build_declare_tree_dynamic(preprocessed_file, constraints_threshold, output_file, minimization_flag,
+                                   reverse_flag)
     else:
         print("Branching policy not recognized. Supported policies: [frequency, dynamic] ")
