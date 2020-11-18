@@ -329,6 +329,7 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     # load log
     log = pm.read_xes(log_file_path)
     logs = split_log(log, clusters)
+    export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
@@ -367,7 +368,6 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
                  duration_median, duration_min, duration_max, case_arrival_avg,
                  unique_tasks_num, unique_tasks])
 
-
     # Imperative models
     imperative = False
     if imperative:
@@ -384,6 +384,22 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
 
     # retrieve centroids constraints
     pass
+
+
+def export_traces_labels(log, clusters, output_file_path):
+    """
+Export a csv file containing for each trace the corresponding cluster
+    :param output_file_path:
+    """
+    print("Exporting traces cluster labels to " + output_file_path)
+    with open(output_file_path, 'w') as output_file:
+        csv_writer = csv.writer(output_file, delimiter=';')
+        header = ["TRACE", "CLUSTER"]
+        csv_writer.writerow(header)
+
+        # put traces in sub-logs
+        for trace_index in range(len(log)):
+            csv_writer.writerow([trace_index, clusters.labels_[trace_index]])
 
 
 def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder):
