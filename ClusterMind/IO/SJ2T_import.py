@@ -340,7 +340,7 @@ Extract the mean of the confidence of the aggregated result
 
 def extract_detailed_perspective(detailed_csv_file_path, output_path, perspective="Mean", measure="Confidence"):
     """
-Extract the mean of the confidence of the detailed traces result
+Extract the mean of the measure of the detailed traces result
     :param detailed_csv_file_path:
     :param output_path:
     :param perspective:
@@ -355,7 +355,7 @@ Extract the mean of the confidence of the detailed traces result
             temp_res.setdefault(line['Constraint'], {})
             if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
                 trace_index += 1
-            temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line['Confidence']
+            temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line[measure]
 
         header = ["Constraint"]
         for trace in temp_res[list(temp_res.keys())[0]].keys():

@@ -50,21 +50,21 @@ if test -f "${MODEL}"; then
 else
   #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c 0.8 -s 0.05 -i 0 -oJSON ${MODEL} -oCSV ${MODEL}.csv
   java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c 0.8 -s 0.001 -i 0 -keep -oJSON ${MODEL} -oCSV ${MODEL}.csv
+
+  # Retrieve measure
+  echo "################################ MEASURES"
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oJSON $OUTPUT_CHECK_JSON -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip
+
+  # Trim constraints
+  echo "################################ STATISTICAL TRIM"
+  python3 -m SoundDeclare.sound_declare ${OUTPUT_CHECK_JSON}AggregatedMeasures.json $FOCUSSED_CSV $SOUND_MODEL
+
+  # Simplify model, i.e., remove redundant constraints
+  echo "################################ SIMPLIFICATION"
+  #java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oCSV $SOUND_MODEL_CSV -oJSON $SOUND_MODEL_JSON -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+  java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oJSON $SOUND_MODEL_JSON -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oJSON $OUTPUT_CHECK_JSON -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip
 fi
-
-# Retrieve measure
-echo "################################ MEASURES"
-java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oJSON $OUTPUT_CHECK_JSON -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip
-
-# Trim constraints
-echo "################################ STATISTICAL TRIM"
-python3 -m SoundDeclare.sound_declare ${OUTPUT_CHECK_JSON}AggregatedMeasures.json $FOCUSSED_CSV $SOUND_MODEL
-
-# Simplify model, i.e., remove redundant constraints
-echo "################################ SIMPLIFICATION"
-#java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oCSV $SOUND_MODEL_CSV -oJSON $SOUND_MODEL_JSON -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
-java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oJSON $SOUND_MODEL_JSON -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
-java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $SOUND_MODEL_JSON -iME $MODEL_ENCODING -oJSON $OUTPUT_CHECK_JSON -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip
 
 # Build DECLARE-Tree
 echo "################################ DECLARE TREES"

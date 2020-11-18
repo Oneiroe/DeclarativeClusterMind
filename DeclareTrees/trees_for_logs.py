@@ -14,7 +14,7 @@ if __name__ == '__main__':
     reverse_flag = sys.argv[7] == "True"  # True descending order, Flase: ascending order
 
     # Pre-prcessing
-    cmio.extract_detailed_perspective(sj2t_file, preprocessed_file)
+    cmio.extract_detailed_perspective(sj2t_file, preprocessed_file, measure="Confidence")
 
     # Declare tree
     if branching_policy == "frequency":
