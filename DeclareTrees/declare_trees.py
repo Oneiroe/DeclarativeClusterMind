@@ -12,6 +12,10 @@ import pm4py as pm
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 import pm4py.statistics.traces.log as stats
 
+from sklearn import tree
+import numpy as np
+import graphviz
+
 
 class ClusterNode:
     def __init__(self, constraint=None, threshold=0.8):
@@ -344,3 +348,59 @@ It build clusters sub-logs from the leaves of the tree
         xes_exporter.apply(logs[cluster_index],
                            output_folder + log.attributes['concept:name'] + '_cluster_' + str(
                                cluster_index) + '.xes')
+
+
+def import_labels(labels_file, sj2t_trace_result_csv):
+    # Import labels
+    labels = []
+
+    with open(labels_file, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = True
+        for line in csv_reader:
+            if header:
+                header = False
+                continue
+            labels += [line[1]]
+
+    # import data
+    featured_data = [[] for i in range(len(labels))]
+
+    focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"
+    data, constraints_names = cmio.extract_detailed_perspective(sj2t_trace_result_csv, focussed_csv)
+    # transpose_sj2t(data)
+    # for constraint in data:
+    #     for trace in data[constraint]:
+    #         if trace == 'Constraint':
+    #             continue
+    #         featured_data[int(trace.strip("T"))] += [float(data[constraint][trace])]
+
+    return data, labels, constraints_names
+
+
+def retrieve_decision_tree_for_clusters(labels_file, sj2t_trace_result_csv, sj2t_trace_output_file):
+    """
+Use existing decision tree building techniques to retrieve a decision tree for your clusters
+    :rtype: object
+    """
+    print("Importing data...")
+    featured_data, labels, constraints_names = import_labels(labels_file, sj2t_trace_result_csv)
+    # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
+    # Y: [n_samples] --> target: for each trace put the clusters label
+    print("Building decision Tree...")
+    featured_data = np.nan_to_num(np.array(featured_data), posinf=1.7976931348623157e+100,
+                                  neginf=-1.7976931348623157e+100)
+    labels = np.nan_to_num(np.array(labels), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(featured_data, labels)
+    print("Exporting decision Tree...")
+    tree.plot_tree(clf)
+    # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+    dot_data = tree.export_graphviz(clf,
+                                    out_file=sj2t_trace_output_file,
+                                    feature_names=constraints_names,
+                                    class_names=["Cluster_"+str(i) for i in labels],
+                                    filled=True,
+                                    rounded=True,
+                                    # special_characters = True
+                                    )

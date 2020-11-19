@@ -349,13 +349,26 @@ Extract the mean of the measure of the detailed traces result
     temp_res = {}
     traces_mapping = {}
     trace_index = 0
+    featured_data = []
+    features_names = []
+    temp_pivot = ""
+    stop_flag = 2
     with open(detailed_csv_file_path, 'r') as file:
         csv_file = csv.DictReader(file, delimiter=';')
         for line in csv_file:
+            if temp_pivot == "":
+                temp_pivot = line['Constraint']
             temp_res.setdefault(line['Constraint'], {})
             if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
                 trace_index += 1
+            if line['Constraint'] == temp_pivot:
+                featured_data += [[]]
+                stop_flag -= 1
+            if stop_flag >= 1:
+                features_names += [line['Constraint']]
+
             temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line[measure]
+            featured_data[-1] += [float(line[measure])]
 
         header = ["Constraint"]
         for trace in temp_res[list(temp_res.keys())[0]].keys():
@@ -367,3 +380,4 @@ Extract the mean of the measure of the detailed traces result
             for constraint in temp_res:
                 temp_res[constraint].update({"Constraint": constraint})
                 writer.writerow(temp_res[constraint])
+    return featured_data, features_names
