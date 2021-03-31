@@ -22,6 +22,7 @@ from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
 from scipy.cluster.hierarchy import dendrogram
 from matplotlib import pyplot as plt
+import seaborn as sns
 
 
 def block_diag_einsum(arr, num):
@@ -403,6 +404,19 @@ Export a csv file containing for each trace the corresponding cluster
 
 
 def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder):
+    # print(">>>>>visualize PCA selected constraints")
+    # with open(output_folder + '/pca-features.csv', 'w') as output:
+    #     constraint_measures_names = [c + "_m" + str(m) for c in constraints for m in range(measures)]
+    #     pca_features = pd.DataFrame(pca.components_, columns=constraint_measures_names)
+    #     csv_output = csv.writer(output, delimiter=';')
+    #     # header
+    #     csv_output.writerow(constraint_measures_names)
+    #     # values
+    #     for i in range(pca_features.shape[0]):
+    #         csv_output.writerow(pca_features.transpose()[i])
+    #
+    #     plt.matshow(pca_features.corr())
+    #     plt.show()
     print(">>>>>visualize centroids constraints")
     try:
         res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
