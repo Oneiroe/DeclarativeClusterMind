@@ -40,7 +40,7 @@ java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iM
 
 echo "################################ DATA PROCESSING"
 # post process result? like merge clusters
-#python3 -m ClusterMind.utils.merge_clusters "clustered-logs/" "-output[MEAN].csv" "aggregated_result.csv"
+#python3 -m ClusterMind.utils.aggregate_clusters_measures "clustered-logs/" "-output[MEAN].csv" "aggregated_result.csv"
 
 echo "################################ DECLARE TREE"
 # Build DECLARE-Tree

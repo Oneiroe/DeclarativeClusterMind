@@ -6,6 +6,7 @@ from random import random
 import graphviz
 import pydot
 import ClusterMind.IO.SJ2T_import as cmio
+import ClusterMind.IO.J3Tree_import as j3tio
 
 from pm4py.objects.log.log import EventLog
 import pm4py as pm
@@ -350,7 +351,7 @@ It build clusters sub-logs from the leaves of the tree
                                cluster_index) + '.xes')
 
 
-def import_labels(labels_file, sj2t_trace_result_csv):
+def import_labels(labels_file, j3tree_trace_measures_csv):
     # Import labels
     labels = []
 
@@ -367,7 +368,8 @@ def import_labels(labels_file, sj2t_trace_result_csv):
     featured_data = [[] for i in range(len(labels))]
 
     focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"
-    data, constraints_names = cmio.extract_detailed_perspective(sj2t_trace_result_csv, focussed_csv)
+    # data, constraints_names = cmio.extract_detailed_perspective(j3tree_trace_measures_csv, focussed_csv)
+    data, constraints_names = j3tio.extract_detailed_trace_perspective_csv(j3tree_trace_measures_csv, focussed_csv)
     # transpose_sj2t(data)
     # for constraint in data:
     #     for trace in data[constraint]:
@@ -378,13 +380,13 @@ def import_labels(labels_file, sj2t_trace_result_csv):
     return data, labels, constraints_names
 
 
-def retrieve_decision_tree_for_clusters(labels_file, sj2t_trace_result_csv, sj2t_trace_output_file):
+def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
     :rtype: object
     """
     print("Importing data...")
-    featured_data, labels, constraints_names = import_labels(labels_file, sj2t_trace_result_csv)
+    featured_data, labels, constraints_names = import_labels(labels_file, j3tree_trace_measures_csv)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
     print("Building decision Tree...")
@@ -399,7 +401,7 @@ Use existing decision tree building techniques to retrieve a decision tree for y
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=constraints_names,
-                                    class_names=["Cluster_"+str(i) for i in labels],
+                                    class_names=["Cluster_" + str(i) for i in labels],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True

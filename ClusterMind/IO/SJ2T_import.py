@@ -60,10 +60,10 @@ def retrieve_SJ2T_csv_data(input_file_path):
     :return:
     """
     print("Retrieving results data...")
-    traces = 0
+    traces_num = 0
     constraints_num = 0
-    measures = 0
-    constraints = []
+    measures_num = 0
+    constraints_names = []
     with open(input_file_path, 'r') as input_file:
         csv_reader = csv.reader(input_file, delimiter=';')
         header = 1
@@ -74,16 +74,16 @@ def retrieve_SJ2T_csv_data(input_file_path):
             if header > 0:
                 # Skip the header line
                 header -= 1
-                measures = len(line[3:])
+                measures_num = len(line[3:])
                 continue
             lines += 1
             c.add(line[1])
-            if line[1] not in constraints:
-                constraints += [line[1]]
+            if line[1] not in constraints_names:
+                constraints_names += [line[1]]
         constraints_num = len(c)
-        traces = int(lines / constraints_num)
-    print("traces:" + str(traces) + ",constraints:" + str(constraints_num) + ",measures:" + str(measures))
-    return traces, constraints_num, measures, constraints
+        traces_num = int(lines / constraints_num)
+    print("traces:" + str(traces_num) + ",constraints:" + str(constraints_num) + ",measures:" + str(measures_num))
+    return traces_num, constraints_num, measures_num, constraints_names
 
 
 def import_SJ2T_csv_known(input_file_path, traces, constraints, measures):

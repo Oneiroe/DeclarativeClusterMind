@@ -2,13 +2,15 @@
 import sys
 from collections import Counter
 
+import ClusterMind.IO.SJ2T_import as cmio
+import ClusterMind.IO.J3Tree_import as j3io
+
 import sklearn.cluster as cluster
 import pandas as pd
 from pm4py.objects.log.log import EventLog
 from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
-import ClusterMind.IO.SJ2T_import as cmio
 import numpy as np
 import plotly.express as px
 import pm4py as pm
@@ -482,7 +484,8 @@ if __name__ == '__main__':
 
     print(clustering_algorithm)
 
-    traces, constraints_num, measures, constraints = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
+    # traces_num, constraints_num, measures_num, constraints_names = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
+    traces_num, constraints_num, measures_num, constraints_names = j3io.retrieve_trace_measures_metadata(sj2t_csv_file_path)
 
     # CLUSTERING
     clusters, pca, input2D = cluster_traces_from_file(sj2t_csv_file_path, clustering_algorithm, boolean_confidence)
@@ -497,7 +500,7 @@ if __name__ == '__main__':
         threshold = 0.95
         labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
         visualize_results(clusters, labels, traces_index)
-        visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder)
+        visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
     else:
         print(">>>>>>>>>>>> Visualization SKIPPED")
     # STATS

@@ -95,4 +95,4 @@ echo "add stats to declare tree TO-DO"
 #done
 
 # merge results
-#python3 -m ClusterMind.utils.merge_clusters $PROCESSED_DATA_FOLDER"/" "-output[MEAN].csv" "aggregated_result.csv"
+#python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER"/" "-output[MEAN].csv" "aggregated_result.csv"

@@ -19,15 +19,20 @@ LOG_MAINCLASS="minerful.MinerFulLogMakerStarter"
 SIMPLIFIER_MAINCLASS="minerful.MinerFulSimplificationStarter"
 ERROR_MAINCLASS="minerful.MinerFulErrorInjectedLogMakerStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
-JANUS_CHECK_MAINCLASS="minerful.JanusModelCheckStarter"
+JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 LOG_NAME="SEPSIS"
 INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
-MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_0.05_c_0.8].json"
+#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_0.05_c_0.8].json"
+MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 MODEL_ENCODING="json"
 OUTPUT_CHECK_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
 OUTPUT_CHECK_JSON=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.json"
+
+OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasures].csv"
+OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
+OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
 #        'kmeans',  # 0
 #        'affinity',  # 1
@@ -69,11 +74,15 @@ echo "################################ SIMPLIFICATION"
 
 # Retrieve measure
 echo "################################ MEASURE"
-java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
+if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
+  echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
+else
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
+fi
 
 # Launch clustering
 echo "################################ CLUSTERING"
-python3 -m ClusterMind.cm_clustering $OUTPUT_CHECK_CSV $INPUT_LOG $CLUSTERING_ALGORITHM $BOOLEAN $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG
+python3 -m ClusterMind.cm_clustering "$OUTPUT_TRACE_MEASURES_CSV" $INPUT_LOG $CLUSTERING_ALGORITHM $BOOLEAN $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -81,18 +90,18 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   echo $INPUT_LOG
   OUTPUT_CHECK_CSV="${INPUT_LOG}""-output.csv"
   OUTPUT_CHECK_JSON="${INPUT_LOG}""-output.json"
-  java -cp Janus.jar minerful.JanusModelCheckStarter -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -nanLogSkip
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
-#  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures
-#  -nanTraceSubstitute,--nan-trace-substitute            Flag to substitute or not the NaN values when computing trace measures
-#  -nanTraceValue,--nan-trace-value <number>
+  #  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures
+  #  -nanTraceSubstitute,--nan-trace-substitute            Flag to substitute or not the NaN values when computing trace measures
+  #  -nanTraceValue,--nan-trace-value <number>
 
   #  keep only mean
-  python3 singleAggregationPerspectiveFocusCSV.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
+  #  python3 singleAggregationPerspectiveFocusCSV.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
 done
 
 # merge results
-python3 -m ClusterMind.utils.merge_clusters $PROCESSED_DATA_FOLDER"/" "-output[MEAN].csv" "aggregated_result.csv"
+python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER"/" "-output[logMeasures].csv" "aggregated_result.csv"
 
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
@@ -103,5 +112,7 @@ echo "################################ DECLARE TREES"
 python3 -m DeclareTrees.trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_FLAG
 
 echo "################################ DECISION TREES"
-python3 -m DeclareTrees.decision_trees_for_clusters $RESULTS_FOLDER"/traces-labels.csv" $OUTPUT_CHECK_CSV $RESULTS_FOLDER"/decision_tree.dot"
-
+python3 -m DeclareTrees.decision_trees_for_clusters \
+  ${RESULTS_FOLDER}"/traces-labels.csv" \
+  "$OUTPUT_TRACE_MEASURES_CSV" \
+  ${RESULTS_FOLDER}"/decision_tree.dot"
