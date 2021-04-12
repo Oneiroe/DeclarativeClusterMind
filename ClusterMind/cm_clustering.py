@@ -2,7 +2,7 @@
 import sys
 from collections import Counter
 
-import ClusterMind.IO.SJ2T_import as cmio
+# import ClusterMind.IO.SJ2T_import as cmio
 import ClusterMind.IO.J3Tree_import as j3io
 
 import sklearn.cluster as cluster
@@ -155,7 +155,7 @@ def visualize_matrices(input2D, clusters):
     fig2.show()
 
 
-def visualize_results(clusters, labels, traces_index):
+def visualize_constraints_in_clusters(clusters, labels, traces_index):
     print(">>>>> Visualize constraints present in the clusters")
     res_df = pd.DataFrame()
     res_df_naive = pd.DataFrame()
@@ -220,7 +220,7 @@ def plot_3d(df, title='t-SNE 3D Clusters visualization', name='labels'):
     fig.show()
 
 
-def plot_tSNE_3d(input2D):
+def plot_tSNE_3d(input2D, clusters):
     # 3d plot of clusters through t-SNE
     print(">>>>> tSNE 3D visualization")
     names = ['x', 'y', 'z']
@@ -260,7 +260,8 @@ def plot_dendrogram(model, **kwargs):
 def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=True):
     # INPUT IMPORT
     file_format = file_path.split(".")[-1]
-    input3D = cmio.import_SJ2T(file_path, file_format, boolean=boolean_confidence)
+    # input3D = cmio.import_SJ2T(file_path, file_format, boolean=boolean_confidence)
+    input3D = j3io.import_trace_measures(file_path, file_format, boolean_flag=boolean_confidence)
     input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
     print("2D shape:" + str(input2D.shape))
 
@@ -276,7 +277,7 @@ def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=T
     pca_variance = 0.98
     pca = PCA(pca_variance)
     pca.fit(input2D)
-    input2D = pca.transform(input2D)
+    # input2D = pca.transform(input2D)
     print('Dimension of data PCA= ' + str(input2D.shape))
 
     # CLUSTERING
@@ -371,22 +372,7 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
                  duration_median, duration_min, duration_max, case_arrival_avg,
                  unique_tasks_num, unique_tasks])
 
-    # Imperative models
-    imperative = False
-    if imperative:
-        print("imperative models")
-        for cluster_index in logs:
-            # net, initial_marking, final_marking = inductive_miner.apply(s_log)
-            # tree = inductive_miner.apply_tree(s_log)
-            heu_net = heuristics_miner.apply_heu(logs[cluster_index], parameters={
-                heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
-            # gviz = pn_visualizer.apply(net)
-            # pt_visualizer.view(gviz)
-            gviz = hn_visualizer.apply(heu_net)
-            hn_visualizer.view(gviz)
-
-    # retrieve centroids constraints
-    pass
+        return logs
 
 
 def export_traces_labels(log, clusters, output_file_path):
@@ -405,28 +391,29 @@ Export a csv file containing for each trace the corresponding cluster
             csv_writer.writerow([trace_index, clusters.labels_[trace_index]])
 
 
-def visualize_centroids_constraints(clusters, pca, threshold, measures, constraints, output_folder):
-    # print(">>>>>visualize PCA selected constraints")
-    # with open(output_folder + '/pca-features.csv', 'w') as output:
-    #     constraint_measures_names = [c + "_m" + str(m) for c in constraints for m in range(measures)]
-    #     pca_features = pd.DataFrame(pca.components_, columns=constraint_measures_names)
-    #     csv_output = csv.writer(output, delimiter=';')
-    #     # header
-    #     csv_output.writerow(constraint_measures_names)
-    #     # values
-    #     for i in range(pca_features.shape[0]):
-    #         csv_output.writerow(pca_features.transpose()[i])
-    #
-    #     plt.matshow(pca_features.corr())
-    #     plt.show()
+def plot_clusters_imperative_models(clusters_logs):
+    # Imperative models
+    print("clusters imperative models...")
+    for cluster_index in clusters_logs:
+        # net, initial_marking, final_marking = inductive_miner.apply(s_log)
+        # tree = inductive_miner.apply_tree(s_log)
+        heu_net = heuristics_miner.apply_heu(clusters_logs[cluster_index], parameters={
+            heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
+        # gviz = pn_visualizer.apply(net)
+        # pt_visualizer.view(gviz)
+        gviz = hn_visualizer.apply(heu_net)
+        hn_visualizer.view(gviz)
+
+
+def visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
     print(">>>>>visualize centroids constraints")
     try:
         res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
         for centroid_index in range(len(clusters.cluster_centers_)):
             centroid = clusters.cluster_centers_[centroid_index]
             c = pca.inverse_transform(centroid)
-            for i in range(len(constraints)):
-                if c[1 + measures * i] > threshold:
+            for i in range(len(constraints_names)):
+                if c[1 + measures_num * i] > threshold:
                     # confidence>threshold, it is the 2nd measure
                     res_matrix[centroid_index] += [1]
                 else:
@@ -435,11 +422,68 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures, constrai
         with open(output_folder + '/centroids-constraints.csv', 'w') as output:
             csv_output = csv.writer(output, delimiter=';')
             # header
-            csv_output.writerow(constraints)
+            csv_output.writerow(constraints_names)
             # values
             csv_output.writerows(res_matrix)
     except:
         print("ERROR >>> Centroid export error:", sys.exc_info()[0])
+
+
+def visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
+    print(">>>>>visualize PCA selected constraints")
+    with open(output_folder + '/pca-features.csv', 'w') as output:
+        constraint_measures_names = [c + "_m" + str(m) for c in constraints_names for m in range(measures_num)]
+        n_pcs = pca.components_.shape[0]
+        pca_features = pd.DataFrame(pca.components_, columns=constraint_measures_names)
+        # Print all features importance
+        csv_output = csv.writer(output, delimiter=';')
+        csv_output.writerow(constraint_measures_names)
+        for i in range(pca_features.shape[0]):
+            csv_output.writerow(pca_features.transpose()[i])
+
+        # Correlation Matrix between constraints
+        # plt.matshow(pca_features.corr())
+        # plt.show()
+
+        # most important features
+        most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
+        most_important_names = [constraint_measures_names[most_important[i]] for i in range(n_pcs)]
+        dic = {'PC{}'.format(i): most_important_names[i] for i in range(n_pcs)}
+        print(pd.DataFrame(dic.items()))
+
+
+def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
+                           output_folder,
+                           visualization_flag):
+    print(clustering_algorithm)
+
+    # traces_num, constraints_num, measures_num, constraints_names = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
+    traces_num, constraints_num, measures_num, constraints_names = j3io.retrieve_trace_measures_metadata(
+        trace_measures_csv_file_path)
+
+    # CLUSTERING
+    clusters, pca, input2D = cluster_traces_from_file(trace_measures_csv_file_path, clustering_algorithm,
+                                                      boolean_confidence)
+
+    # STATS
+    clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+
+    # VISUALIZATION
+    if visualization_flag:
+        print(">>>>>>>>>>>> Visualization")
+        plot_clusters_imperative_models(clusters_logs)
+
+        plot_tSNE_3d(input2D, clusters)
+        # visualize_matrices(input2D, clusters)
+
+        threshold = 0.95
+        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
+        # visualize_constraints_in_clusters(clusters, labels, traces_index)
+
+        visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+        visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+    else:
+        print(">>>>>>>>>>>> Visualization SKIPPED")
 
 
 if __name__ == '__main__':
@@ -475,33 +519,13 @@ if __name__ == '__main__':
     # clustering_algorithm = clustering_algs[6]
     # boolean_confidence = True
 
-    sj2t_csv_file_path = sys.argv[1]
+    trace_measures_csv_file_path = sys.argv[1]
     log_file_path = sys.argv[2]
     clustering_algorithm = sys.argv[3]
     boolean_confidence = sys.argv[4] == "True"
     output_folder = sys.argv[5]
     visualization_flag = sys.argv[6] == "True"
 
-    print(clustering_algorithm)
-
-    # traces_num, constraints_num, measures_num, constraints_names = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
-    traces_num, constraints_num, measures_num, constraints_names = j3io.retrieve_trace_measures_metadata(sj2t_csv_file_path)
-
-    # CLUSTERING
-    clusters, pca, input2D = cluster_traces_from_file(sj2t_csv_file_path, clustering_algorithm, boolean_confidence)
-
-    # VISUALIZATION
-    if visualization_flag:
-        print(">>>>>>>>>>>> Visualization")
-
-        plot_tSNE_3d(input2D)
-        visualize_matrices(input2D, clusters)
-
-        threshold = 0.95
-        labels, traces_index = cmio.import_SJ2T_labels(sj2t_csv_file_path, threshold)
-        visualize_results(clusters, labels, traces_index)
-        visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
-    else:
-        print(">>>>>>>>>>>> Visualization SKIPPED")
-    # STATS
-    retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
+                           output_folder,
+                           visualization_flag)

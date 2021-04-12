@@ -31,8 +31,10 @@ def retrieve_csv_trace_measures_metadata(input_file_path):
             c.add(line[1])
             if line[1] not in constraints_names:
                 constraints_names += [line[1]]
+            else:
+                break
         constraints_num = len(c)
-        traces_num = int(lines / constraints_num)
+        traces_num = int((len(open(input_file_path).readlines()) - 1) / constraints_num)
 
     print("traces:" + str(traces_num) + ",constraints:" + str(constraints_num) + ",measures:" + str(measures_num))
     return traces_num, constraints_num, measures_num, constraints_names
@@ -116,3 +118,152 @@ def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_
                 temp_res[constraint].update({"Constraint": constraint})
                 writer.writerow(temp_res[constraint])
     return featured_data, features_names
+
+
+def import_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num):
+    """
+        Import the result from SJ2T csv containing the measurement of every constraint in every trace.
+        Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+    :param input_file_path:
+    :param traces_num:
+    :param constraints_num:
+    :param measures_num:
+    :return:
+    """
+    print("Importing data...")
+    result = np.zeros((traces_num, constraints_num, measures_num))
+    # result = np.ndarray(shape=(1, 1, len(line) - 4)) # shape of the result ndarray
+    with open(input_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        it = 0
+        ic = 0
+        i = 0
+        for line in csv_reader:
+            # print(i / (1050 * 260))
+            i += 1
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                continue
+            if ic == constraints_num:
+                ic = 0
+                it += 1
+
+            # result[it][ic] = np.nan_to_num(np.array(line[2:])) # in case NaN and +-inf is a problem
+            result[it][ic] = np.array(line[2:])
+            ic += 1
+    print("3D shape:" + str(result.shape))
+    return result
+
+
+def import_boolean_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num, threshold=0.9):
+    """
+    Import the result from SJ2T csv containing only if a constraint is satisfied in a trace (conf>threshold).
+    Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+
+    :param threshold:
+    :param input_file_path:
+    :param traces_num:
+    :param constraints_num:
+    :param measures_num:
+    :return:
+    """
+    print("Importing data...")
+    result = np.zeros((traces_num, constraints_num, measures_num))
+    # result = np.ndarray(shape=(1, 1, len(line) - 4)) # shape of the result ndarray
+    with open(input_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        it = 0
+        ic = 0
+        i = 0
+        for line in csv_reader:
+            # print(i / (1050 * 260))
+            i += 1
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                continue
+            if ic == constraints_num:
+                ic = 0
+                it += 1
+
+            # result[it][ic] = np.nan_to_num(np.array(line[2:])) # in case NaN and +-inf is a problem
+            result[it][ic] = np.array(int(float(line[2]) > threshold)) # TODO WARNING when more measures are used
+            ic += 1
+    print("3D shape:" + str(result.shape))
+    return result
+
+
+def import_trace_measures(input_file_path, input_file_format, boolean_flag=False):
+    """
+    Interface to import the SJ2T results. it calls the appropriate function given the file format.
+
+    :param boolean_flag:
+    :param input_file_path:
+    :param input_file_format:
+    """
+    if input_file_format == 'csv':
+        traces, constraints_num, measures, constraints = retrieve_csv_trace_measures_metadata(input_file_path)
+        if boolean_flag:
+            return import_boolean_trace_measures_from_csv(input_file_path, traces, constraints_num, measures)
+        else:
+            return import_trace_measures_from_csv(input_file_path, traces, constraints_num, measures)
+    elif input_file_format == 'json':
+        print("Json import not yet implemented")
+    else:
+        print("[" + str(input_file_format) + "]Format not recognised")
+
+
+def import_trace_labels_csv(trace_measures_csv_file_path, constraints_num, threshold=0.95):
+    """
+        Import the labels of the trace measures csv containing the measurement of every constraint in every trace.
+        Performances note: Knowing the dimension of the matrix in advance make the process way more fast
+    :param constraints_num:
+    :param threshold:
+    :param trace_measures_csv_file_path:
+    :return:
+    """
+    print("Importing labels...")
+    result = {}
+    trace_index = []
+    repetition = 0
+    # result = np.ndarray(shape=(1, 1, len(line) - 4)) # shape of the result ndarray
+    with open(trace_measures_csv_file_path, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = 1
+        for line in csv_reader:
+            # First line
+            if header > 0:
+                # Skip the header line
+                header -= 1
+                continue
+            result.setdefault(line[0], set())
+            if repetition == 0:
+                trace_index += [line[0]]
+                repetition = constraints_num
+            repetition -= 1
+            if float(line[2]) > threshold:
+                result[line[0]].add(line[1]) # TODO WARNING when more measures are used
+
+    return result, trace_index
+
+
+def import_trace_labels(input_file_path, constraints_num, threshold):
+    """
+    Interface to import the labels of SJ2T results. it calls the appropriate function given the file format.
+
+    :param threshold:
+    :param input_file_path:
+    """
+    input_file_format = input_file_path.split(".")[-1]
+    if input_file_format == 'csv':
+        labels, traces_index = import_trace_labels_csv(input_file_path, constraints_num, threshold)
+        return labels, traces_index
+    elif input_file_format == 'json':
+        print("Json import not yet implemented")
+    else:
+        print("[" + str(input_file_format) + "]Format not recognised")
