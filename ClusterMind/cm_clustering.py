@@ -257,7 +257,7 @@ def plot_dendrogram(model, **kwargs):
     dendrogram(linkage_matrix, **kwargs)
 
 
-def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=True):
+def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=True, apply_pca=True):
     # INPUT IMPORT
     file_format = file_path.split(".")[-1]
     # input3D = cmio.import_SJ2T(file_path, file_format, boolean=boolean_confidence)
@@ -277,7 +277,8 @@ def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=T
     pca_variance = 0.98
     pca = PCA(pca_variance)
     pca.fit(input2D)
-    # input2D = pca.transform(input2D)
+    if apply_pca:
+        input2D = pca.transform(input2D)
     print('Dimension of data PCA= ' + str(input2D.shape))
 
     # CLUSTERING
@@ -454,7 +455,7 @@ def visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, c
 
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
-                           visualization_flag):
+                           visualization_flag, apply_pca):
     print(clustering_algorithm)
 
     # traces_num, constraints_num, measures_num, constraints_names = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
@@ -463,7 +464,7 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
 
     # CLUSTERING
     clusters, pca, input2D = cluster_traces_from_file(trace_measures_csv_file_path, clustering_algorithm,
-                                                      boolean_confidence)
+                                                      boolean_confidence, apply_pca)
 
     # STATS
     clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
@@ -471,7 +472,7 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
     # VISUALIZATION
     if visualization_flag:
         print(">>>>>>>>>>>> Visualization")
-        plot_clusters_imperative_models(clusters_logs)
+        # plot_clusters_imperative_models(clusters_logs)
 
         plot_tSNE_3d(input2D, clusters)
         # visualize_matrices(input2D, clusters)
@@ -525,7 +526,8 @@ if __name__ == '__main__':
     boolean_confidence = sys.argv[4] == "True"
     output_folder = sys.argv[5]
     visualization_flag = sys.argv[6] == "True"
+    apply_pca_flag = sys.argv[7] == "True"
 
     behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
-                           visualization_flag)
+                           visualization_flag, apply_pca_flag)
