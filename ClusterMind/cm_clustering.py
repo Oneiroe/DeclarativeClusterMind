@@ -1,28 +1,33 @@
 # import sklearn.cluster as clustering
 import sys
+import csv
 from collections import Counter
+import datetime
 
 # import ClusterMind.IO.SJ2T_import as cmio
 import ClusterMind.IO.J3Tree_import as j3io
 
-import sklearn.cluster as cluster
-import pandas as pd
-from pm4py.objects.log.log import EventLog
-from sklearn.manifold import TSNE
-from sklearn.mixture import GaussianMixture
-from sklearn.decomposition import PCA
-import numpy as np
-import plotly.express as px
 import pm4py as pm
+# from pm4py.objects.log.log import EventLog
+from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 import pm4py.statistics.traces.log as stats
-import csv
+from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
 from pm4py.visualization.petrinet import visualizer as pn_visualizer
 from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
+
+import pandas as pd
+import numpy as np
+import sklearn.cluster as cluster
+from sklearn.manifold import TSNE
+from sklearn.mixture import GaussianMixture
+from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import dendrogram
+
+import plotly.express as px
 from matplotlib import pyplot as plt
 import seaborn as sns
 
@@ -362,7 +367,7 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
             events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
             events_min = min(len(i) for i in current_s_log)
             events_max = max(len(i) for i in current_s_log)
-            unique_tasks = set(e['concept:name'] for t in current_s_log for e in t)
+            unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
             unique_tasks_num = len(unique_tasks)
             duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
             duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
@@ -372,6 +377,124 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
                 [cluster_index, traces_num, events_avg, events_min, events_max,
                  duration_median, duration_min, duration_max, case_arrival_avg,
                  unique_tasks_num, unique_tasks])
+
+        return logs
+
+
+def get_attributes_statistics_in_log(current_s_log, all_events_attributes):
+    """
+    Returns the statistics of the given events attributes in a log:
+    - numerical attributes: [avg, min, max]
+    - categorical attributes: TO_BE_DECIDED
+            [number of values, list of all values in cluster]
+        OR  [ [value, count] for value,count in log[attribute] ]
+    - TimeStamp: [avg,min,max]
+
+    :param current_s_log:
+    :param all_events_attributes:
+    :return:
+    """
+    result = []
+    for attribute in all_events_attributes:
+        result += [[]]
+        # map, key-value: attribute value-number of traces with that value
+        current_attribute_values = attributes_filter.get_attribute_values(current_s_log, attribute)
+        #     If attribute is numeric (int or float)
+        current_attributes_value_list = sorted(list(current_attribute_values.keys()))
+        if len(current_attributes_value_list) == 0:
+            continue
+        if type(current_attributes_value_list[0]) is int or type(current_attributes_value_list[0]) is float:
+            # BEWARE sometimes INT are used for categorical encoding
+            current_max = max(current_attributes_value_list)
+            current_min = min(current_attributes_value_list)
+            current_avg = 0.0
+            for key in current_attribute_values:
+                current_avg += key * current_attribute_values[key]
+            current_avg /= len(current_s_log)
+            result[-1] = [current_avg, current_min, current_max]
+        #     If attribute is categorical (string)
+        elif type(current_attributes_value_list[0]) is str:
+            current_values = current_attributes_value_list
+            current_values_num = len(current_attributes_value_list)
+            result[-1] = [current_values_num, current_values]
+        elif type(current_attributes_value_list[0]) is datetime.datetime:
+            current_max = datetime.datetime.strftime(max(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
+            current_min = datetime.datetime.strftime(min(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
+            # This average is not weighted
+            current_avg = datetime.datetime.strftime(datetime.datetime.fromtimestamp(
+                sum(map(datetime.datetime.timestamp, current_attributes_value_list)) / len(
+                    current_attributes_value_list)), "%Y-%m-%d %H:%M:%S")
+            result[-1] = [current_avg, current_min, current_max]
+
+    for trace in current_s_log:
+        for event in trace:
+            pass
+    return result
+
+
+def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder):
+    """
+     retrieve the statistics of the performances and attributes of the sub-logs of each clusters.
+     Specifically, it retrieves for each cluster:
+     - PERFORMANCES:
+        - number of traces
+        - average, min and max trace length
+        - unique tasks in the sub-log
+        - min and max timestamp (i.e. timestamp of the first and last activities of the cluster)
+        + PM4Py ready to use stats
+    - OTHER PERSPECTIVES (log dependent)
+        - numerical attributes: max, min, avg
+        - categorical attributes: number of values, list of all values in cluster
+
+    :param clusters:
+    :param log_file_path:
+    :param output_folder:
+    """
+    print('>>>>>>>>>> Statistics')
+    # load log
+    log = pm.read_xes(log_file_path)
+    all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
+    logs = split_log(log, clusters)
+    export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    # export clusters logs to disk
+    for cluster_index in logs:
+        xes_exporter.apply(logs[cluster_index],
+                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
+                               cluster_index) + '.xes')
+    # retrieve and output stats
+    with open(output_folder + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
+        csv_out = csv.writer(output, delimiter=';')
+        csv_out.writerow([
+                             'CLUSTER_NUM',
+                             'TRACES',
+                             'TRACE-LEN-AVG',
+                             'TRACE-LEN-MIN',
+                             'TRACE-LEN-MAX',
+                             'DURATION-MEDIAN',
+                             'DURATION-MIN',
+                             'DURATION-MAX',
+                             'CASE-ARRIVAL-AVG',
+                             'TASKS-NUM',
+                             'TASKS'
+                         ] + all_events_attributes
+                         )
+        for cluster_index in logs:
+            current_s_log = logs[cluster_index]
+            traces_num = len(current_s_log)
+            events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
+            events_min = min(len(i) for i in current_s_log)
+            events_max = max(len(i) for i in current_s_log)
+            unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
+            unique_tasks_num = len(unique_tasks)
+            duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
+            duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
+            duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
+            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
+            events_attributes = get_attributes_statistics_in_log(current_s_log, all_events_attributes)
+            csv_out.writerow(
+                [cluster_index, traces_num, events_avg, events_min, events_max,
+                 duration_median, duration_min, duration_max, case_arrival_avg,
+                 unique_tasks_num, unique_tasks] + events_attributes)
 
         return logs
 
@@ -467,7 +590,8 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
                                                       boolean_confidence, apply_pca)
 
     # STATS
-    clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
 
     # VISUALIZATION
     if visualization_flag:
