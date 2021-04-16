@@ -18,6 +18,8 @@ from pm4py.visualization.process_tree import visualizer as pt_visualizer
 from pm4py.visualization.petrinet import visualizer as pn_visualizer
 from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
+from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
+from pm4py.visualization.dfg import visualizer as dfg_visualization
 
 import pandas as pd
 import numpy as np
@@ -515,18 +517,37 @@ Export a csv file containing for each trace the corresponding cluster
             csv_writer.writerow([trace_index, clusters.labels_[trace_index]])
 
 
-def plot_clusters_imperative_models(clusters_logs):
+def plot_clusters_imperative_models(clusters_logs, model='DFG'):
+    """
+        Plot the desired imperative model of each cluster
+    :param clusters_logs:
+    :param model:
+    """
     # Imperative models
     print("clusters imperative models...")
     for cluster_index in clusters_logs:
-        # net, initial_marking, final_marking = inductive_miner.apply(s_log)
-        # tree = inductive_miner.apply_tree(s_log)
-        heu_net = heuristics_miner.apply_heu(clusters_logs[cluster_index], parameters={
-            heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
-        # gviz = pn_visualizer.apply(net)
-        # pt_visualizer.view(gviz)
-        gviz = hn_visualizer.apply(heu_net)
-        hn_visualizer.view(gviz)
+        # PROCESS TREE
+        if model == 'process-tree':
+            tree = inductive_miner.apply_tree(clusters_logs[cluster_index])
+            gviz = pt_visualizer.apply(tree)
+            pt_visualizer.view(gviz)
+        # PETRI-NET
+        elif model == 'petrinet':
+            net, initial_marking, final_marking = inductive_miner.apply(clusters_logs[cluster_index])
+            gviz = pn_visualizer.apply(net)
+            pt_visualizer.view(gviz)
+        ## HEURISTIC-NET
+        elif model == 'heuristic-net':
+            heu_net = heuristics_miner.apply_heu(clusters_logs[cluster_index], parameters={
+                heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
+            gviz = hn_visualizer.apply(heu_net)
+            hn_visualizer.view(gviz)
+        ## Directly Follow Graph
+        elif model == 'DFG':
+            dfg = dfg_discovery.apply(clusters_logs[cluster_index], variant=dfg_discovery.Variants.PERFORMANCE)
+            gviz = dfg_visualization.apply(dfg, log=clusters_logs[cluster_index],
+                                           variant=dfg_visualization.Variants.PERFORMANCE)
+            dfg_visualization.view(gviz)
 
 
 def visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
@@ -598,7 +619,7 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
         print(">>>>>>>>>>>> Visualization")
         # plot_clusters_imperative_models(clusters_logs)
 
-        plot_tSNE_3d(input2D, clusters)
+        # plot_tSNE_3d(input2D, clusters)
         # visualize_matrices(input2D, clusters)
 
         threshold = 0.95
