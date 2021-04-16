@@ -8,7 +8,7 @@ import pydot
 import ClusterMind.IO.SJ2T_import as cmio
 import ClusterMind.IO.J3Tree_import as j3tio
 
-from pm4py.objects.log.log import EventLog
+from pm4py.objects.log.obj import EventLog
 import pm4py as pm
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 import pm4py.statistics.traces.log as stats

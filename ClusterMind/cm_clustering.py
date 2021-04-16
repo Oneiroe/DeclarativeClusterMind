@@ -341,7 +341,8 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     # load log
     log = pm.read_xes(log_file_path)
     logs = split_log(log, clusters)
-    export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    export_traces_labels_multi_perspective(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
@@ -387,9 +388,7 @@ def get_attributes_statistics_in_log(current_s_log, all_events_attributes):
     """
     Returns the statistics of the given events attributes in a log:
     - numerical attributes: [avg, min, max]
-    - categorical attributes: TO_BE_DECIDED
-            [number of values, list of all values in cluster]
-        OR  [ [value, count] for value,count in log[attribute] ]
+    - categorical attributes: [number of values, list of all values in cluster]
     - TimeStamp: [avg,min,max]
 
     :param current_s_log:
@@ -434,6 +433,37 @@ def get_attributes_statistics_in_log(current_s_log, all_events_attributes):
     return result
 
 
+def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
+    """
+    Returns the statistics of the given events attributes in a trace:
+    - numerical attributes: [avg, min, max]
+    - categorical attributes: [number of values, list of all values in cluster]
+    - TimeStamp: [avg,min,max]
+
+    :param current_trace:
+    :param all_events_attributes:
+    :return:
+    """
+    result = []
+    for attribute in all_events_attributes:
+        result += [[]]
+        current_attribute_values = attributes_filter.get_attribute_values([current_trace], attribute)
+        current_attributes_value_list = sorted(list(current_attribute_values.keys()))
+        if len(current_attributes_value_list) == 0:
+            continue
+        if type(current_attributes_value_list[0]) is datetime.datetime:
+            current_max = datetime.datetime.strftime(max(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
+            current_min = datetime.datetime.strftime(min(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
+            # This average is not weighted
+            current_avg = datetime.datetime.strftime(datetime.datetime.fromtimestamp(
+                sum(map(datetime.datetime.timestamp, current_attributes_value_list)) / len(
+                    current_attributes_value_list)), "%Y-%m-%d %H:%M:%S")
+            result[-1] = [current_avg, current_min, current_max]
+        else:
+            result[-1] = current_attributes_value_list
+    return result
+
+
 def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder):
     """
      retrieve the statistics of the performances and attributes of the sub-logs of each clusters.
@@ -457,7 +487,8 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
     log = pm.read_xes(log_file_path)
     all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
     logs = split_log(log, clusters)
-    export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    export_traces_labels_multi_perspective(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
@@ -515,6 +546,28 @@ Export a csv file containing for each trace the corresponding cluster
         # put traces in sub-logs
         for trace_index in range(len(log)):
             csv_writer.writerow([trace_index, clusters.labels_[trace_index]])
+
+
+def export_traces_labels_multi_perspective(log, clusters, output_file_path):
+    """
+    Export a csv file containing for each trace the corresponding cluster and values of the attributes
+    :param output_file_path:
+    """
+    print("Exporting traces cluster labels to " + output_file_path)
+    with open(output_file_path, 'w') as output_file:
+        all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
+
+        csv_writer = csv.writer(output_file, delimiter=';')
+        header = [
+            "TRACE",
+            "CLUSTER"
+        ] + all_events_attributes
+        csv_writer.writerow(header)
+
+        # put traces in sub-logs
+        for trace_index in range(len(log)):
+            trace_attributes = get_attributes_statistics_in_trace(log[trace_index], all_events_attributes)
+            csv_writer.writerow([trace_index, clusters.labels_[trace_index]] + trace_attributes)
 
 
 def plot_clusters_imperative_models(clusters_logs, model='DFG'):
