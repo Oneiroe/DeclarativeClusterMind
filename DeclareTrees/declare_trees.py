@@ -351,9 +351,10 @@ It build clusters sub-logs from the leaves of the tree
                                cluster_index) + '.xes')
 
 
-def import_labels(labels_file, j3tree_trace_measures_csv):
+def import_labels(labels_file, j3tree_trace_measures_csv, label_feature_index=1):
     # Import labels
     labels = []
+    feature_name = ""
 
     with open(labels_file, 'r') as input_file:
         csv_reader = csv.reader(input_file, delimiter=';')
@@ -361,8 +362,10 @@ def import_labels(labels_file, j3tree_trace_measures_csv):
         for line in csv_reader:
             if header:
                 header = False
+                print("Label feature: " + line[label_feature_index])
+                feature_name = line[label_feature_index]
                 continue
-            labels += [line[1]]
+            labels += [line[label_feature_index]]
 
     # import data
     featured_data = [[] for i in range(len(labels))]
@@ -377,7 +380,7 @@ def import_labels(labels_file, j3tree_trace_measures_csv):
     #             continue
     #         featured_data[int(trace.strip("T"))] += [float(data[constraint][trace])]
 
-    return data, labels, constraints_names
+    return data, labels, constraints_names, feature_name
 
 
 def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file):
@@ -386,7 +389,10 @@ Use existing decision tree building techniques to retrieve a decision tree for y
     :rtype: object
     """
     print("Importing data...")
-    featured_data, labels, constraints_names = import_labels(labels_file, j3tree_trace_measures_csv)
+    label_feature_index = 1
+    featured_data, labels, constraints_names, feature_name = import_labels(labels_file,
+                                                                           j3tree_trace_measures_csv,
+                                                                           label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
     print("Building decision Tree...")
@@ -401,7 +407,7 @@ Use existing decision tree building techniques to retrieve a decision tree for y
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=constraints_names,
-                                    class_names=["Cluster_" + str(i) for i in labels],
+                                    class_names=[feature_name + "_" + str(i) for i in labels],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True
