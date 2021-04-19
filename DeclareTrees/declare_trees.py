@@ -383,13 +383,15 @@ def import_labels(labels_file, j3tree_trace_measures_csv, label_feature_index=1)
     return data, labels, constraints_names, feature_name
 
 
-def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file):
+def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file,
+                                        label_feature_index=1):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
+
+    label_index 1 is always the clusters label
     :rtype: object
     """
     print("Importing data...")
-    label_feature_index = 1
     featured_data, labels, constraints_names, feature_name = import_labels(labels_file,
                                                                            j3tree_trace_measures_csv,
                                                                            label_feature_index)
