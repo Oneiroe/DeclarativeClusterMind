@@ -259,6 +259,7 @@ def build_declare_tree_dynamic(clusters_file, threshold, output_file, minimize=F
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
+    :param reverse:
     :param minimize:
     :param output_file:
     :param clusters_file:

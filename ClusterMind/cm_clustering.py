@@ -791,7 +791,8 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     # STATS
     # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
     clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
-    visualize_pca_relevant_feature(pca, feature_names, output_folder)
+    if apply_pca:
+        visualize_pca_relevant_feature(pca, feature_names, output_folder)
 
     # VISUALIZATION
     if visualization_flag:
@@ -832,6 +833,6 @@ if __name__ == '__main__':
         clustering_algorithm = sys.argv[2]
         output_folder = sys.argv[3]
         visualization_flag = sys.argv[4]
-        apply_pca = sys.argv[5]
+        apply_pca = sys.argv[5] == "True"
 
         attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca)
