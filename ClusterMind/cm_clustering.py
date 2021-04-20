@@ -29,6 +29,7 @@ from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import dendrogram
+from scipy.cluster import hierarchy
 
 import plotly.express as px
 from matplotlib import pyplot as plt
@@ -241,28 +242,6 @@ def plot_tSNE_3d(input2D, clusters):
     if -1 in df_matrix.labels.array:
         # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
         plot_3d(df_matrix[df_matrix.labels != -1])
-
-
-def plot_dendrogram(model, **kwargs):
-    # Create linkage matrix and then plot the dendrogram
-
-    # create the counts of samples under each node
-    counts = np.zeros(model.children_.shape[0])
-    n_samples = len(model.labels_)
-    for i, merge in enumerate(model.children_):
-        current_count = 0
-        for child_idx in merge:
-            if child_idx < n_samples:
-                current_count += 1  # leaf node
-            else:
-                current_count += counts[child_idx - n_samples]
-        counts[i] = current_count
-
-    linkage_matrix = np.column_stack([model.children_, model.distances_,
-                                      counts]).astype(float)
-
-    # Plot the corresponding dendrogram
-    dendrogram(linkage_matrix, **kwargs)
 
 
 def cluster_traces_from_rules_trace_measures(trace_measures_file_path, algorithm='dbscan', boolean_confidence=True,
@@ -731,6 +710,37 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
         print(">>>>>>>>>>>> Visualization SKIPPED")
 
 
+def plot_dendrogram(model, **kwargs):
+    # Create linkage matrix and then plot the dendrogram
+    plt.title('Hierarchical Clustering Dendrogram')
+
+    # create the counts of samples under each node
+    counts = np.zeros(model.children_.shape[0])
+    n_samples = len(model.labels_)
+    for i, merge in enumerate(model.children_):
+        current_count = 0
+        for child_idx in merge:
+            if child_idx < n_samples:
+                current_count += 1  # leaf node
+            else:
+                current_count += counts[child_idx - n_samples]
+        counts[i] = current_count
+
+    # linkage_matrix = np.column_stack([model.children_, model.distances_, counts]).astype(float)
+    linkage_matrix = hierarchy.linkage(model.children_, 'ward')
+
+    # Plot the corresponding dendrogram
+    dendrogram(
+        linkage_matrix,
+        p=len(set(model.labels_)), truncate_mode='lastp',
+        # show_leaf_counts=True,
+        show_contracted=True,
+        color_threshold=0.5*max(linkage_matrix[:,2])
+    )
+    plt.xlabel("Number of points in node (or index of point if no parenthesis).")
+    plt.show()
+
+
 def attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca):
     """
     Cluster the traces of a log according to the log categorical attributes
@@ -790,6 +800,8 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
 
         plot_tSNE_3d(input2D, clusters)
         # visualize_matrices(input2D, clusters)
+
+        # plot_dendrogram(clusters.fit(input2D))
 
         # threshold = 0.95
         # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
