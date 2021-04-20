@@ -8,10 +8,11 @@ import datetime
 import ClusterMind.IO.J3Tree_import as j3io
 
 import pm4py as pm
-# from pm4py.objects.log.log import EventLog
 from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+from pm4py.objects.log.importer.xes import importer as xes_importer
 import pm4py.statistics.traces.log as stats
+from pm4py.objects.log.util import get_log_representation
 from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
@@ -264,11 +265,20 @@ def plot_dendrogram(model, **kwargs):
     dendrogram(linkage_matrix, **kwargs)
 
 
-def cluster_traces_from_file(file_path, algorithm='dbscan', boolean_confidence=True, apply_pca=True):
+def cluster_traces_from_rules_trace_measures(trace_measures_file_path, algorithm='dbscan', boolean_confidence=True,
+                                             apply_pca=True):
+    """
+Cluster traces according to declarative rules measurements evaluated on them
+    :param trace_measures_file_path:
+    :param algorithm:
+    :param boolean_confidence:
+    :param apply_pca:
+    :return:
+    """
     # INPUT IMPORT
-    file_format = file_path.split(".")[-1]
+    file_format = trace_measures_file_path.split(".")[-1]
     # input3D = cmio.import_SJ2T(file_path, file_format, boolean=boolean_confidence)
-    input3D = j3io.import_trace_measures(file_path, file_format, boolean_flag=boolean_confidence)
+    input3D = j3io.import_trace_measures(trace_measures_file_path, file_format, boolean_flag=boolean_confidence)
     input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
     print("2D shape:" + str(input2D.shape))
 
@@ -342,7 +352,8 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     log = pm.read_xes(log_file_path)
     logs = split_log(log, clusters)
     # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
-    export_traces_labels_multi_perspective(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    export_traces_labels_multi_perspective(log, clusters,
+                                           output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
@@ -488,7 +499,8 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
     all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
     logs = split_log(log, clusters)
     # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
-    export_traces_labels_multi_perspective(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    export_traces_labels_multi_perspective(log, clusters,
+                                           output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
@@ -559,9 +571,9 @@ def export_traces_labels_multi_perspective(log, clusters, output_file_path):
 
         csv_writer = csv.writer(output_file, delimiter=';')
         header = [
-            "TRACE",
-            "CLUSTER"
-        ] + all_events_attributes
+                     "TRACE",
+                     "CLUSTER"
+                 ] + all_events_attributes
         csv_writer.writerow(header)
 
         # put traces in sub-logs
@@ -653,6 +665,17 @@ def visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, c
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
                            visualization_flag, apply_pca):
+    """
+    Cluster the traces of a log according to a set of declarative rules and their trace measuremnents
+
+    :param trace_measures_csv_file_path:
+    :param log_file_path:
+    :param clustering_algorithm:
+    :param boolean_confidence:
+    :param output_folder:
+    :param visualization_flag:
+    :param apply_pca:
+    """
     print(clustering_algorithm)
 
     # traces_num, constraints_num, measures_num, constraints_names = cmio.retrieve_SJ2T_csv_data(sj2t_csv_file_path)
@@ -660,8 +683,9 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
         trace_measures_csv_file_path)
 
     # CLUSTERING
-    clusters, pca, input2D = cluster_traces_from_file(trace_measures_csv_file_path, clustering_algorithm,
-                                                      boolean_confidence, apply_pca)
+    clusters, pca, input2D = cluster_traces_from_rules_trace_measures(trace_measures_csv_file_path,
+                                                                      clustering_algorithm,
+                                                                      boolean_confidence, apply_pca)
 
     # STATS
     # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
@@ -685,47 +709,95 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
         print(">>>>>>>>>>>> Visualization SKIPPED")
 
 
+def attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca):
+    """
+    Cluster the traces of a log according to the log categorical attributes
+
+    :param log_file_path:
+    :param clustering_algorithm:
+    :param output_folder:
+    :param visualization_flag:
+    :param apply_pca:
+    """
+
+    # log_file_path = "experiments/DECISION-TREE-CLUSTERS/0-input/SEPSIS-log.xes"
+    # clustering_algorithm = "dbscan"
+    # output_folder = "experiments/DECISION-TREE-CLUSTERS/2-clustered-logs/"
+    # visualization_flag = True
+    # apply_pca = True
+
+    data, feature_names = get_log_representation.get_default_representation(xes_importer.apply(log_file_path))
+    # 1-hot encoding
+    input2D = pd.DataFrame(data, columns=feature_names)
+
+    traces = data.shape[0]
+    attributes = data.shape[1]
+
+    print(clustering_algorithm)
+    print("Traces: " + str(traces))
+    print("Attributes: " + str(attributes))
+    print(feature_names)
+
+    # Clean NaN and infinity
+    input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(np.power(input2D, -10), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
+
+    # reduce dimensions with PCA
+    # pca = None
+    pca_variance = 0.98
+    pca = PCA(pca_variance)
+    if apply_pca:
+        pca.fit(input2D)
+        df = pca.transform(input2D)
+        print('Dimension of data PCA= ' + str(input2D.shape))
+
+    # CLUSTERING
+    print("Clustering...")
+    clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
+
+    # STATS
+    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
+
+    # VISUALIZATION
+    if visualization_flag:
+        print(">>>>>>>>>>>> Visualization")
+        # plot_clusters_imperative_models(clusters_logs)
+
+        plot_tSNE_3d(input2D, clusters)
+        visualize_matrices(input2D, clusters)
+
+        # threshold = 0.95
+        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
+        # visualize_constraints_in_clusters(clusters, labels, traces_index)
+
+        # visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+        # visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+    else:
+        print(">>>>>>>>>>>> Visualization SKIPPED")
+
+
 if __name__ == '__main__':
-    logs = ('BPIC12',  # 0
-            'BPIC13_cp',  # 1
-            'BPIC13_i',  # 2
-            'BPIC14_f',  # 3
-            'BPIC15_1f',  # 4
-            'BPIC15_2f',  # 5
-            'BPIC15_3f',  # 6
-            'BPIC15_4f',  # 7
-            'BPIC15_5f',  # 8
-            'BPIC17_f',  # 9
-            'RTFMP',  # 10
-            'SEPSIS'  # 11
-            )
-    log_name = logs[11]
-    # print(log_name)
+    if len(sys.argv) == 8:
+        # BEHAVIOURAL CLUSTERING
+        trace_measures_csv_file_path = sys.argv[1]
+        log_file_path = sys.argv[2]
+        clustering_algorithm = sys.argv[3]
+        boolean_confidence = sys.argv[4] == "True"
+        output_folder = sys.argv[5]
+        visualization_flag = sys.argv[6] == "True"
+        apply_pca_flag = sys.argv[7] == "True"
 
-    clustering_algs = (
-        'kmeans',  # 0
-        'affinity',  # 1
-        'meanshift',  # 2
-        'agglomerative',  # 3
-        'spectral',  # 4
-        'dbscan',  # 5
-        'optics',  # 6
-        'birch',  # 7
-        'gaussian',  # 8 DO NOT USE THIS!
-    )
-    # sj2t_csv_file_path = "./input/" + log_name + "-output.csv"
-    # log_file_path = "./input/" + log_name + "-log.xes"
-    # clustering_algorithm = clustering_algs[6]
-    # boolean_confidence = True
+        behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
+                               output_folder,
+                               visualization_flag, apply_pca_flag)
+    elif len(sys.argv) == 6:
+        # ATTRIBUTE CLUSTERING
+        log_file_path = sys.argv[1]
+        clustering_algorithm = sys.argv[2]
+        output_folder = sys.argv[3]
+        visualization_flag = sys.argv[4]
+        apply_pca = sys.argv[5]
 
-    trace_measures_csv_file_path = sys.argv[1]
-    log_file_path = sys.argv[2]
-    clustering_algorithm = sys.argv[3]
-    boolean_confidence = sys.argv[4] == "True"
-    output_folder = sys.argv[5]
-    visualization_flag = sys.argv[6] == "True"
-    apply_pca_flag = sys.argv[7] == "True"
-
-    behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
-                           output_folder,
-                           visualization_flag, apply_pca_flag)
+        attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca)

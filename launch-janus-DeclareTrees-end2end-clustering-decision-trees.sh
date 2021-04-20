@@ -21,19 +21,34 @@ ERROR_MAINCLASS="minerful.MinerFulErrorInjectedLogMakerStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
+# Input log
 LOG_NAME="SEPSIS"
+#LOG_NAME="RTFMP"
+#LOG_NAME="BPIC12"
 INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
-#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_0.05_c_0.8].json"
-MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
+
+# Discovery & Measurements
+SUPPORT=0.0
+CONFIDENCE=0.9
+MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
+#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
 MODEL_ENCODING="json"
+
 OUTPUT_CHECK_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
 OUTPUT_CHECK_JSON=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.json"
-
 OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasures].csv"
 OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
+# CLustering
+CLUSTERING_FEATURES="attributes"
+# 'rules'
+# 'attributes'
+# 'specific-attribute'
+# 'mix'
+CLUSTERING_ALGORITHM="optics"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -43,9 +58,9 @@ OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasure
 #        'optics',  # 6
 #        'birch',  # 7
 #        'gaussian',  # 8 DO NOT USE THIS!
-CLUSTERING_ALGORITHM="dbscan"
 BOOLEAN="True"
-VISUALIZATION_FLAG="False"
+VISUALIZATION_FLAG="True"
+APPLY_PCA_FLAG="True"
 
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
@@ -60,12 +75,13 @@ BRANCHING_ORDER_FLAG="True"
 ##################################################################
 #
 # Discover process model (if not existing)
+echo "${MODEL}"
 echo "################################ DISCOVERY"
 if test -f "${MODEL}"; then
   echo "$FILE already exists."
 else
-  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c 0.8 -s 0.05 -i 0 -oJSON ${MODEL}
-#  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c 0.8 -s 0.05 -i 0 -keep -oJSON ${MODEL}
+  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${MODEL}
+#  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 fi
 
 # Simplify model, i.e., remove redundant constraints
@@ -77,12 +93,20 @@ echo "################################ MEASURE"
 if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
   echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
 else
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip -measure Confidence
+#  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
 fi
 
 # Launch clustering
 echo "################################ CLUSTERING"
-python3 -m ClusterMind.cm_clustering "$OUTPUT_TRACE_MEASURES_CSV" $INPUT_LOG $CLUSTERING_ALGORITHM $BOOLEAN $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG
+if [ $CLUSTERING_FEATURES = "rules" ]; then
+  echo "Clustering based on declarative rules"
+  python3 -m ClusterMind.cm_clustering "$OUTPUT_TRACE_MEASURES_CSV" $INPUT_LOG $CLUSTERING_ALGORITHM $BOOLEAN $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG $APPLY_PCA_FLAG
+else
+  echo "Clustering based on all log categorical attributes"
+  python3 -m ClusterMind.cm_clustering $INPUT_LOG $CLUSTERING_ALGORITHM $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG $APPLY_PCA_FLAG
+fi
+
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -90,7 +114,8 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   echo $INPUT_LOG
   OUTPUT_CHECK_CSV="${INPUT_LOG}""-output.csv"
   OUTPUT_CHECK_JSON="${INPUT_LOG}""-output.json"
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence
+  #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
   #  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures
   #  -nanTraceSubstitute,--nan-trace-substitute            Flag to substitute or not the NaN values when computing trace measures
@@ -109,10 +134,11 @@ cp ${PROCESSED_DATA_FOLDER}/*labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclareTrees.trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_FLAG
+python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_FLAG
 
 echo "################################ DECISION TREES"
 python3 -m DeclareTrees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
-  ${RESULTS_FOLDER}"/decision_tree.dot"
+  ${RESULTS_FOLDER}"/decision_tree.dot" \
+  1
