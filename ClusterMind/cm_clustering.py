@@ -662,6 +662,28 @@ def visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, c
         print(pd.DataFrame(dic.items()))
 
 
+def visualize_pca_relevant_feature(pca, feature_names, output_folder):
+    print(">>>>>visualize PCA selected features")
+    with open(output_folder + '/pca-features.csv', 'w') as output:
+        n_pcs = pca.components_.shape[0]
+        pca_features = pd.DataFrame(pca.components_, columns=feature_names)
+        # Print all features importance
+        csv_output = csv.writer(output, delimiter=';')
+        csv_output.writerow(feature_names)
+        for i in range(pca_features.shape[0]):
+            csv_output.writerow(pca_features.transpose()[i])
+
+        # Correlation Matrix between constraints
+        # plt.matshow(pca_features.corr())
+        # plt.show()
+
+        # most important features
+        most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
+        most_important_names = [feature_names[most_important[i]] for i in range(n_pcs)]
+        dic = {'PC{}'.format(i): most_important_names[i] for i in range(n_pcs)}
+        print(pd.DataFrame(dic.items()))
+
+
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
                            visualization_flag, apply_pca):
@@ -730,8 +752,8 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     # 1-hot encoding
     input2D = pd.DataFrame(data, columns=feature_names)
 
-    traces = data.shape[0]
-    attributes = data.shape[1]
+    traces = input2D.shape[0]
+    attributes = input2D.shape[1]
 
     print(clustering_algorithm)
     print("Traces: " + str(traces))
@@ -749,7 +771,7 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     pca = PCA(pca_variance)
     if apply_pca:
         pca.fit(input2D)
-        df = pca.transform(input2D)
+        input2D = pca.transform(input2D)
         print('Dimension of data PCA= ' + str(input2D.shape))
 
     # CLUSTERING
@@ -759,6 +781,7 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     # STATS
     # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
     clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
+    visualize_pca_relevant_feature(pca, feature_names, output_folder)
 
     # VISUALIZATION
     if visualization_flag:
@@ -766,14 +789,13 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
         # plot_clusters_imperative_models(clusters_logs)
 
         plot_tSNE_3d(input2D, clusters)
-        visualize_matrices(input2D, clusters)
+        # visualize_matrices(input2D, clusters)
 
         # threshold = 0.95
         # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
         # visualize_constraints_in_clusters(clusters, labels, traces_index)
 
-        # visualize_pca_relevant_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
-        # visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+        # visualize_centroids_constraints(0, pca, 0, measures_num, constraints_names, output_folder)
     else:
         print(">>>>>>>>>>>> Visualization SKIPPED")
 
