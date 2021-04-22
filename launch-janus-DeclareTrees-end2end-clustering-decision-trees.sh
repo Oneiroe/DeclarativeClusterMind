@@ -22,15 +22,15 @@ JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 # Input log
-LOG_NAME="SEPSIS"
+#LOG_NAME="SEPSIS"
 #LOG_NAME="RTFMP"
-#LOG_NAME="BPIC12"
+LOG_NAME="BPIC13"
 INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.9
+CONFIDENCE=0.0
 MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
 #MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
@@ -46,9 +46,9 @@ OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasure
 CLUSTERING_FEATURES="attributes"
 # 'rules'
 # 'attributes'
-# 'specific-attribute'
-# 'mix'
-CLUSTERING_ALGORITHM="optics"
+# 'specific-attribute'  TODO
+# 'mix' TODO
+CLUSTERING_ALGORITHM="agglomerative"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -59,7 +59,7 @@ CLUSTERING_ALGORITHM="optics"
 #        'birch',  # 7
 #        'gaussian',  # 8 DO NOT USE THIS!
 BOOLEAN="True"
-VISUALIZATION_FLAG="True"
+VISUALIZATION_FLAG="False"
 APPLY_PCA_FLAG="True"
 
 # DECLRE-Tree
@@ -68,7 +68,7 @@ PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
 RESULT_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
 BRANCHING_POLICY="dynamic"
 MINIMIZATION_FLAG="True"
-BRANCHING_ORDER_FLAG="True"
+BRANCHING_ORDER_DECREASING_FLAG="True"
 
 ##################################################################
 # SCRIPT
@@ -131,10 +131,13 @@ python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
 cp ${PROCESSED_DATA_FOLDER}/*labels.csv $RESULTS_FOLDER"/traces-labels.csv"
+if test -f $PROCESSED_DATA_FOLDER"/aggregated_result.csv"; then
+  cp $PROCESSED_DATA_FOLDER"/pca-features.csv" $RESULTS_FOLDER"/pca-features.csv"
+fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_FLAG
+python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
 
 echo "################################ DECISION TREES"
 python3 -m DeclareTrees.decision_trees_for_clusters \

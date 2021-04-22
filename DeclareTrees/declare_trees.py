@@ -205,10 +205,15 @@ def get_clusters_table(clusters_file):
                 row = [line[0]]
                 sum_temp = 0.0
                 for i in line[1:]:
-                    row += [float(i)]
-                    if i == 'nan':
-                        continue
+                    if math.isnan(float(i)):
+                        # row += [float(0)]  # consider vacuous satisfaction as a violation
+                        # continue  # equal to +=0
+                        row += [float(1)]
+                        sum_temp += float(1)
+                        # it is a vacuous satisfaction, but see atMostOne problem for the consequences of skipping it
+                        # e.g. atMostOne(a) was used to distinguish clusters with a and cluster without it
                     else:
+                        row += [float(i)]
                         sum_temp += float(i)
                 row += [sum_temp]
             clusters_table += [row]
@@ -255,7 +260,7 @@ def get_most_common_constraint(cluster_table, clusters, used_constraints, revers
     return order_clusters_table(view, reverse)[1][0]
 
 
-def build_declare_tree_dynamic(clusters_file, threshold, output_file, minimize=False, reverse=True):
+def build_declare_tree_dynamic(clusters_file, constraint_measure_threshold, output_file, minimize=False, reverse=True):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
@@ -263,13 +268,13 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     :param minimize:
     :param output_file:
     :param clusters_file:
-    :param threshold:
+    :param constraint_measure_threshold: threshold above which a constraint's measure is considered part of a cluster
     :return:
     """
     # Import initial data
     clusters_table, clusters_indices, constraints_indices = get_clusters_table(clusters_file)
     # root initialization
-    result_tree = ClusterNode(threshold=threshold)
+    result_tree = ClusterNode(threshold=constraint_measure_threshold)
     result_tree.clusters = set(clusters_table[0][1:-1])
     leaves = set()
     leaves.add(result_tree)
