@@ -9,7 +9,7 @@ def retrieve_csv_trace_measures_metadata(input_file_path):
     Retrieve metadata from CSV trace measures file
     :param input_file_path:
     """
-    print("Retrieving results data...")
+    print("Retrieving janus results data...")
     traces_num = 0
     constraints_num = 0
     measures_num = 0
