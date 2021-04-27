@@ -2,6 +2,7 @@ import csv
 import json
 
 import numpy as np
+import pandas as pd
 
 
 def retrieve_csv_trace_measures_metadata(input_file_path):
@@ -120,6 +121,87 @@ def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_
     return featured_data, features_names
 
 
+def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
+                                                 trace_labels_file_path,
+                                                 output_path,
+                                                 label_feature_index=1,
+                                                 measure="Confidence",
+                                                 clean_attributes=True):
+    """
+    From the trace measures, given a specific measure, transpose the results for that one measure for each trace,
+    i.e. a matrix where the rows are the constraints and attributes and the columns are the traces, and
+    each cell contains the measure of the constraint in that trace or the value of the attribute
+
+    :param trace_measures_csv_file_path:
+    :param output_path:
+    :param measure:
+    """
+
+    # RULES
+    temp_res = {}
+    traces_mapping = {}
+    trace_index = 0
+    featured_data_rules = []
+    features_names_rules = []
+    temp_pivot = ""
+    stop_flag = 2
+    with open(trace_measures_csv_file_path, 'r') as file:
+        csv_file = csv.DictReader(file, delimiter=';')
+        if len(csv_file.fieldnames) == 3:
+            measure = csv_file.fieldnames[-1]
+        for line in csv_file:
+            if temp_pivot == "":
+                temp_pivot = line['Constraint']
+            temp_res.setdefault(line['Constraint'], {})
+            if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
+                trace_index += 1
+            if line['Constraint'] == temp_pivot:
+                featured_data_rules += [[]]
+                stop_flag -= 1
+            if stop_flag >= 1:
+                features_names_rules += [line['Constraint']]
+
+            temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line[measure]
+            featured_data_rules[-1] += [float(line[measure])]
+
+        header = ["Constraint"]
+        for trace in temp_res[list(temp_res.keys())[0]].keys():
+            header += [trace]
+
+        with open(output_path, 'w') as out_file:
+            writer = csv.DictWriter(out_file, fieldnames=header, delimiter=';')
+            writer.writeheader()
+            for constraint in temp_res:
+                temp_res[constraint].update({"Constraint": constraint})
+                writer.writerow(temp_res[constraint])
+
+    # ATTRIBUTES
+    featured_data_attributes = []
+    features_names_attributes = []
+    with open(trace_labels_file_path, 'r') as file:
+        csv_file = csv.reader(file, delimiter=';')
+        header = True
+        for line in csv_file:
+            if header:
+                # BEWARE if index goes out of range it does not rise exception
+                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:]
+                header = False
+            else:
+                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:]]
+
+    featured_data_attributes = pd.DataFrame(featured_data_attributes, columns=features_names_attributes)
+    if clean_attributes:
+        # non-numerical attributes and sets cannot be used for decision tree construction
+        featured_data_attributes = featured_data_attributes.replace({'\[': '', '\]': ''}, regex=True)
+        for i in featured_data_attributes:
+            featured_data_attributes[i] = pd.to_numeric(featured_data_attributes[i], errors='coerce')
+    # MERGE
+    featured_data = pd.concat([pd.DataFrame(featured_data_rules, columns=features_names_rules),
+                               featured_data_attributes], axis=1)
+    features_names = np.concatenate([features_names_rules, features_names_attributes])
+    return featured_data, features_names
+
+
 def import_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num):
     """
         Import the result from SJ2T csv containing the measurement of every constraint in every trace.
@@ -192,7 +274,7 @@ def import_boolean_trace_measures_from_csv(input_file_path, traces_num, constrai
                 it += 1
 
             # result[it][ic] = np.nan_to_num(np.array(line[2:])) # in case NaN and +-inf is a problem
-            result[it][ic] = np.array(int(float(line[2]) > threshold)) # TODO WARNING when more measures are used
+            result[it][ic] = np.array(int(float(line[2]) > threshold))  # TODO WARNING when more measures are used
             ic += 1
     print("3D shape:" + str(result.shape))
     return result
@@ -247,7 +329,7 @@ def import_trace_labels_csv(trace_measures_csv_file_path, constraints_num, thres
                 repetition = constraints_num
             repetition -= 1
             if float(line[2]) > threshold:
-                result[line[0]].add(line[1]) # TODO WARNING when more measures are used
+                result[line[0]].add(line[1])  # TODO WARNING when more measures are used
 
     return result, trace_index
 

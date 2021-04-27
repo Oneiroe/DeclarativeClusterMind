@@ -22,17 +22,17 @@ JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 # Input log
-LOG_NAME="SEPSIS"
-#LOG_NAME="RTFMP"
+#LOG_NAME="SEPSIS"
+LOG_NAME="RTFMP"
 #LOG_NAME="BPIC13"
 INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.0
-#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
-MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
+CONFIDENCE=0.9
+MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
 MODEL_ENCODING="json"
 
@@ -43,7 +43,7 @@ OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tr
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
 # CLustering
-CLUSTERING_POLICY="mixed"
+CLUSTERING_POLICY="attributes"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'  TODO
@@ -59,7 +59,7 @@ CLUSTERING_ALGORITHM="optics"
 #        'birch',  # 7
 #        'gaussian',  # 8 DO NOT USE THIS!
 BOOLEAN_RULES="True"
-VISUALIZATION_FLAG="True"
+VISUALIZATION_FLAG="False"
 APPLY_PCA_FLAG="True"
 
 # DECLRE-Tree
@@ -69,6 +69,8 @@ RESULT_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
 BRANCHING_POLICY="dynamic"
 MINIMIZATION_FLAG="True"
 BRANCHING_ORDER_DECREASING_FLAG="True"
+
+MULTI_PERSPECTIVE_FLAG="True"
 
 ##################################################################
 # SCRIPT
@@ -100,7 +102,6 @@ fi
 # Launch clustering
 echo "################################ CLUSTERING"
 python3 -m ClusterMind.cm_clustering $CLUSTERING_POLICY $INPUT_LOG $CLUSTERING_ALGORITHM $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG $APPLY_PCA_FLAG "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
-
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -138,4 +139,5 @@ python3 -m DeclareTrees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
   ${RESULTS_FOLDER}"/decision_tree.dot" \
-  1
+  -5 \
+  ${MULTI_PERSPECTIVE_FLAG}
