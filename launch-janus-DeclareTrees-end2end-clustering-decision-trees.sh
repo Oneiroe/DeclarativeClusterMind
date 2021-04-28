@@ -22,15 +22,15 @@ JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 # Input log
-#LOG_NAME="SEPSIS"
-LOG_NAME="RTFMP"
+LOG_NAME="SEPSIS"
+#LOG_NAME="RTFMP"
 #LOG_NAME="BPIC13"
 INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.9
+CONFIDENCE=0.5
 MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
 #MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
@@ -43,10 +43,10 @@ OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tr
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
 # CLustering
-CLUSTERING_POLICY="attributes"
+CLUSTERING_POLICY="specific-attribute"
 # 'rules'
 # 'attributes'
-# 'specific-attribute'  TODO
+# 'specific-attribute'
 # 'mixed'
 CLUSTERING_ALGORITHM="optics"
 #        'kmeans',  # 0
@@ -139,5 +139,5 @@ python3 -m DeclareTrees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
   ${RESULTS_FOLDER}"/decision_tree.dot" \
-  -5 \
+  1 \
   ${MULTI_PERSPECTIVE_FLAG}

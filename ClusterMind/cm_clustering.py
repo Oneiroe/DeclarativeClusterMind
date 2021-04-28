@@ -72,6 +72,8 @@ def cluster_traces(input2D, traces, constraints, measures, algorithm):
     if nc > len(input2D):
         # when the number of clusters is greater than the number of traces algorithms like k-means trow exceptions
         nc = len(input2D)
+    if nc == 1:
+        nc = pd.DataFrame(input2D).nunique()[0]
 
     if (algorithm == 'kmeans'):
         # K-means
@@ -806,6 +808,77 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
         print(">>>>>>>>>>>> Visualization SKIPPED")
 
 
+def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag):
+    """
+    Cluster the traces of a log according to a single specific categorical attributes of the log (selected by user on input
+
+    :param log_file_path:
+    :param clustering_algorithm:
+    :param output_folder:
+    :param visualization_flag:
+    """
+
+    data, feature_names = get_log_representation.get_default_representation(xes_importer.apply(log_file_path))
+    # 1-hot encoding
+    input2D = pd.DataFrame(data, columns=feature_names)
+
+    # Get attribute to use
+    while True:
+        try:
+            print([f"{i},{e}" for i, e in enumerate(feature_names)])
+            selected_attribute_index = int(input("Select feature index: "))
+            feature_name = feature_names[selected_attribute_index]
+            print("Selected feature: ", feature_name)
+            break
+        except ValueError:
+            print("This is not a valid number, try again.")
+        except IndexError:
+            print("Index out of range, try again.")
+
+    input2D = input2D[[feature_name]]
+
+    traces = input2D.shape[0]
+    attributes = input2D.shape[1]
+
+    print(clustering_algorithm)
+    print("Traces: " + str(traces))
+    print("Attributes: " + str(attributes))
+    print(feature_name)
+
+    # Clean NaN and infinity
+    input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(np.power(input2D, -10), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
+
+    # CLUSTERING
+    print("Clustering...")
+    clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
+
+    # STATS
+    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
+    # if apply_pca_flag:
+    #     visualize_pca_relevant_feature(pca, feature_names, output_folder)
+
+    # VISUALIZATION
+    if visualization_flag:
+        print(">>>>>>>>>>>> Visualization")
+        # plot_clusters_imperative_models(clusters_logs)
+
+        plot_tSNE_3d(input2D, clusters)
+        # visualize_matrices(input2D, clusters)
+
+        # plot_dendrogram(clusters.fit(input2D))
+
+        # threshold = 0.95
+        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
+        # visualize_constraints_in_clusters(clusters, labels, traces_index)
+
+        # visualize_centroids_constraints(0, pca, 0, measures_num, constraints_names, output_folder)
+    else:
+        print(">>>>>>>>>>>> Visualization SKIPPED")
+
+
 def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                      output_folder, visualization_flag, apply_pca_flag):
     """
@@ -925,7 +998,12 @@ if __name__ == '__main__':
 
     elif clustering_policy == 'specific-attribute':
         # SPECIFIC attribute CLUSTERING
-        print("Clustering based on a single specific attribute is not yet implemented")
+        log_file_path = sys.argv[2]
+        clustering_algorithm = sys.argv[3]
+        output_folder = sys.argv[4]
+        visualization_flag = sys.argv[5] == "True"
+
+        specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag)
 
     elif clustering_policy == 'mixed':
         # if len(sys.argv) != 9:
