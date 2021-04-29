@@ -967,8 +967,8 @@ if __name__ == '__main__':
     print("Clustering policy: " + str(clustering_policy))
     # 'rules'
     # 'attributes'
-    # 'specific-attribute'  TODO
-    # 'mixed' TODO
+    # 'specific-attribute'
+    # 'mixed'
     if clustering_policy == 'rules':
         # if len(sys.argv) != 9:
         #     print(f"ERROR: wrong number of arguments for {clustering_policy}-based clustering")

@@ -42,8 +42,8 @@ OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMe
 OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
-# CLustering
-CLUSTERING_POLICY="specific-attribute"
+# Clustering
+CLUSTERING_POLICY="rules"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
@@ -70,7 +70,11 @@ BRANCHING_POLICY="dynamic"
 MINIMIZATION_FLAG="True"
 BRANCHING_ORDER_DECREASING_FLAG="True"
 
-MULTI_PERSPECTIVE_FLAG="True"
+SPLIT_POLICY="attributes"
+# 'rules'
+# 'attributes'
+# 'specific-attribute'
+# 'mixed'
 
 ##################################################################
 # SCRIPT
@@ -140,4 +144,4 @@ python3 -m DeclareTrees.decision_trees_for_clusters \
   "$OUTPUT_TRACE_MEASURES_CSV" \
   ${RESULTS_FOLDER}"/decision_tree.dot" \
   1 \
-  ${MULTI_PERSPECTIVE_FLAG}
+  ${SPLIT_POLICY}

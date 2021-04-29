@@ -424,6 +424,44 @@ def import_labels_multi_perspective(labels_file, j3tree_trace_measures_csv, labe
     return data, labels, features_names, selected_feature_name
 
 
+def import_labels_attributes(labels_file, label_feature_index=1):
+    # Import labels
+    labels = []
+    selected_feature_name = ""
+
+    with open(labels_file, 'r') as input_file:
+        csv_reader = csv.reader(input_file, delimiter=';')
+        header = True
+        for line in csv_reader:
+            if header:
+                header = False
+                print("Label feature: " + line[label_feature_index])
+                selected_feature_name = line[label_feature_index]
+                continue
+            labels += [line[label_feature_index]]
+
+    # import data
+    featured_data = [[] for i in range(len(labels))]
+
+    focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"  # TODO improve this hard-coding
+    # data, constraints_names = cmio.extract_detailed_perspective(j3tree_trace_measures_csv, focussed_csv)
+    # data, features_names = j3tio.extract_detailed_trace_multi_perspective_csv(j3tree_trace_measures_csv,
+    #                                                                           labels_file,
+    #                                                                           focussed_csv,
+    #                                                                           label_feature_index)
+    data, features_names = j3tio.extract_detailed_trace_attributes_csv(labels_file,
+                                                                       focussed_csv,
+                                                                       label_feature_index)
+    # transpose_sj2t(data)
+    # for constraint in data:
+    #     for trace in data[constraint]:
+    #         if trace == 'Constraint':
+    #             continue
+    #         featured_data[int(trace.strip("T"))] += [float(data[constraint][trace])]
+
+    return data, labels, features_names, selected_feature_name
+
+
 def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file,
                                         label_feature_index=1):
     """
@@ -478,8 +516,85 @@ where the splits are either declare rules or attributes
     """
     print("Importing data...")
     featured_data, labels, features_names, selected_feature_name = import_labels_multi_perspective(labels_file,
-                                                                                          j3tree_trace_measures_csv,
-                                                                                          label_feature_index)
+                                                                                                   j3tree_trace_measures_csv,
+                                                                                                   label_feature_index)
+    # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
+    # Y: [n_samples] --> target: for each trace put the clusters label
+    print("Building decision Tree...")
+    featured_data = np.nan_to_num(np.array(featured_data), posinf=1.7976931348623157e+100,
+                                  neginf=-1.7976931348623157e+100)
+    labels = np.nan_to_num(np.array(labels), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(featured_data, labels)
+    print("Exporting decision Tree...")
+    tree.plot_tree(clf)
+    # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+    dot_data = tree.export_graphviz(clf,
+                                    out_file=sj2t_trace_output_file,
+                                    feature_names=features_names,
+                                    class_names=[selected_feature_name + "_" + str(i) for i in labels],
+                                    filled=True,
+                                    rounded=True,
+                                    # special_characters = True
+                                    )
+
+
+def retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv,
+                                                          sj2t_trace_output_file,
+                                                          label_feature_index=1):
+    """
+Use existing decision tree building techniques to retrieve a decision tree for your clusters
+where the splits are attributes
+
+    label_index 1 is always the clusters label
+    :param labels_file:
+    :param j3tree_trace_measures_csv:
+    :param sj2t_trace_output_file:
+    :param label_feature_index:
+    :rtype: object
+    """
+    print("Importing data...")
+    featured_data, labels, features_names, selected_feature_name = import_labels_multi_perspective(labels_file,
+                                                                                                   j3tree_trace_measures_csv,
+                                                                                                   label_feature_index)
+    # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
+    # Y: [n_samples] --> target: for each trace put the clusters label
+    print("Building decision Tree...")
+    featured_data = np.nan_to_num(np.array(featured_data), posinf=1.7976931348623157e+100,
+                                  neginf=-1.7976931348623157e+100)
+    labels = np.nan_to_num(np.array(labels), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    clf = tree.DecisionTreeClassifier()
+    clf = clf.fit(featured_data, labels)
+    print("Exporting decision Tree...")
+    tree.plot_tree(clf)
+    # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+    dot_data = tree.export_graphviz(clf,
+                                    out_file=sj2t_trace_output_file,
+                                    feature_names=features_names,
+                                    class_names=[selected_feature_name + "_" + str(i) for i in labels],
+                                    filled=True,
+                                    rounded=True,
+                                    # special_characters = True
+                                    )
+
+
+def retrieve_decision_tree_attributes_for_clusters(labels_file, j3tree_trace_measures_csv,
+                                                   sj2t_trace_output_file,
+                                                   label_feature_index=1):
+    """
+Use existing decision tree building techniques to retrieve a decision tree for your clusters
+where the splits are attributes
+
+    label_index 1 is always the clusters label
+    :param labels_file:
+    :param j3tree_trace_measures_csv: useless, but kept only to be able to use the same command for all the decison tree launchers
+    :param sj2t_trace_output_file:
+    :param label_feature_index:
+    :rtype: object
+    """
+    print("Importing data...")
+    featured_data, labels, features_names, selected_feature_name = import_labels_attributes(labels_file,
+                                                                                            label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
     print("Building decision Tree...")

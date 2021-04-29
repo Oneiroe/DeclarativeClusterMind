@@ -1,6 +1,7 @@
 import sys
 from DeclareTrees.declare_trees import retrieve_decision_tree_for_clusters
 from DeclareTrees.declare_trees import retrieve_decision_tree_multi_perspective_for_clusters
+from DeclareTrees.declare_trees import retrieve_decision_tree_attributes_for_clusters
 
 if __name__ == '__main__':
     print(sys.argv)
@@ -9,12 +10,29 @@ if __name__ == '__main__':
     j3tree_trace_measures_csv = sys.argv[2]
     output_file = sys.argv[3]
     label_feature_index = int(sys.argv[4])
-    multi_perspective_flag = sys.argv[5] == "True"
+    split_policy = sys.argv[5]
+    # 'rules'
+    # 'attributes'
+    # 'specific-attribute'
+    # 'mixed'
 
-    if multi_perspective_flag:
+    if split_policy == 'mixed':
+        # MIXED
         print("multi-perspective decision tree")
         retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv, output_file,
                                                               label_feature_index)
-    else:
+    elif split_policy == 'attributes':
+        # ATTRIBUTES
+        print("attributes-only decision tree")
+        retrieve_decision_tree_attributes_for_clusters(labels_file, j3tree_trace_measures_csv, output_file,
+                                                       label_feature_index)
+    elif split_policy == 'specific-attribute':
+        # SPECIFIC ATTRIBUTE
+        print("split on single specific attribute not yet implemented")
+        pass
+    elif split_policy == 'rules':
+        # RULES
         print("rules-only decision tree")
         retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, output_file, label_feature_index)
+    else:
+        print("ERROR: Decision tree split policy not recognized")

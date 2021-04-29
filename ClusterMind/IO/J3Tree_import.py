@@ -202,6 +202,46 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
     return featured_data, features_names
 
 
+def extract_detailed_trace_attributes_csv(trace_labels_file_path,
+                                          output_path,
+                                          label_feature_index=1,
+                                          clean_attributes=True):
+    """
+    Return a matrix where the rows are the attributes and the columns are the traces, and
+    each cell contains the value of the attribute
+
+    :param trace_labels_file_path:
+    :param label_feature_index:
+    :param clean_attributes:
+    :param output_path:
+    :return:
+    """
+    # ATTRIBUTES
+    featured_data_attributes = []
+    features_names_attributes = []
+    with open(trace_labels_file_path, 'r') as file:
+        csv_file = csv.reader(file, delimiter=';')
+        header = True
+        for line in csv_file:
+            if header:
+                # BEWARE if index goes out of range it does not rise exception
+                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:]
+                header = False
+            else:
+                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:]]
+
+    featured_data_attributes = pd.DataFrame(featured_data_attributes, columns=features_names_attributes)
+    if clean_attributes:
+        # non-numerical attributes and sets cannot be used for decision tree construction
+        featured_data_attributes = featured_data_attributes.replace({'\[': '', '\]': ''}, regex=True)
+        for i in featured_data_attributes:
+            featured_data_attributes[i] = pd.to_numeric(featured_data_attributes[i], errors='coerce')
+
+    # TODO output labelled data for debugging
+
+    return featured_data_attributes, features_names_attributes
+
+
 def import_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num):
     """
         Import the result from SJ2T csv containing the measurement of every constraint in every trace.
