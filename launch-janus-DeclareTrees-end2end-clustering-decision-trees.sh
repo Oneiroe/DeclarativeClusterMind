@@ -6,13 +6,6 @@
 ##################################################################
 # PARAMETERS
 ##################################################################
-# experiment folders
-EXPERIMENT_NAME="experiments/DECISION-TREE-CLUSTERS"
-INPUT_FOLDER=$EXPERIMENT_NAME"/0-input"
-PREPROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/1-generated-logs-and-models"
-PROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/2-clustered-logs"
-RESULTS_FOLDER=$EXPERIMENT_NAME"/3-results"
-mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DATA_FOLDER $RESULTS_FOLDER
 
 # Janus main classes
 LOG_MAINCLASS="minerful.MinerFulLogMakerStarter"
@@ -21,34 +14,37 @@ ERROR_MAINCLASS="minerful.MinerFulErrorInjectedLogMakerStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
-# Input log
-LOG_NAME="SEPSIS"
-#LOG_NAME="RTFMP"
-#LOG_NAME="BPIC13"
-INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
-LOG_ENCODING="xes"
+LOG_NAME="BPIC13"
+# "SEPSIS"
+# "RTFMP"
 
-# Discovery & Measurements
-SUPPORT=0.0
-CONFIDENCE=0.5
-MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
-#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
-#MODEL=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
-MODEL_ENCODING="json"
 
-OUTPUT_CHECK_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
-OUTPUT_CHECK_JSON=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.json"
-OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasures].csv"
-OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
-OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
-
-# Clustering
-CLUSTERING_POLICY="rules"
+CLUSTERING_POLICY="attributes"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="optics"
+SPLIT_POLICY="mixed"
+# 'rules'
+# 'attributes'
+# 'specific-attribute'
+# 'mixed'
+
+# experiment folders
+EXPERIMENT_NAME="experiments/REAL-LIFE-EXPLORATION/"${LOG_NAME}"/clusters_"${CLUSTERING_POLICY}"-treeSplit_"${SPLIT_POLICY}
+INPUT_FOLDER="experiments/REAL-LIFE-EXPLORATION/00-INPUT-LOGS-MODELS"
+PREPROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/1-measurements"
+PROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/2-clustered-logs"
+RESULTS_FOLDER=$EXPERIMENT_NAME"/3-results"
+mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DATA_FOLDER $RESULTS_FOLDER
+
+# Clustering
+#CLUSTERING_POLICY="attributes"
+# 'rules'
+# 'attributes'
+# 'specific-attribute'
+# 'mixed'
+CLUSTERING_ALGORITHM="agglomerative"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -65,16 +61,35 @@ APPLY_PCA_FLAG="True"
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
-RESULT_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
+RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
 BRANCHING_POLICY="dynamic"
 MINIMIZATION_FLAG="True"
 BRANCHING_ORDER_DECREASING_FLAG="True"
+#SPLIT_POLICY="mixed"
+## 'rules'
+## 'attributes'
+## 'specific-attribute'
+## 'mixed'
 
-SPLIT_POLICY="attributes"
-# 'rules'
-# 'attributes'
-# 'specific-attribute'
-# 'mixed'
+# Input log
+#LOG_NAME="BPIC13"
+INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
+LOG_ENCODING="xes"
+
+# Discovery & Measurements
+SUPPORT=0.0
+CONFIDENCE=0.5
+MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ABSENCE].json"
+MODEL_ENCODING="json"
+
+OUTPUT_CHECK_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
+OUTPUT_CHECK_JSON=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.json"
+OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasures].csv"
+OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
+OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
 ##################################################################
 # SCRIPT
@@ -136,7 +151,7 @@ fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
+python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_DECLARE_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
 
 echo "################################ DECISION TREES"
 python3 -m DeclareTrees.decision_trees_for_clusters \
