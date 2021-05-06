@@ -1,5 +1,6 @@
+import os
 import sys
-from DeclareTrees.declare_trees import retrieve_decision_tree_for_clusters
+from DeclareTrees.declare_trees import retrieve_decision_tree_rules_for_clusters
 from DeclareTrees.declare_trees import retrieve_decision_tree_multi_perspective_for_clusters
 from DeclareTrees.declare_trees import retrieve_decision_tree_attributes_for_clusters
 
@@ -16,15 +17,23 @@ if __name__ == '__main__':
     # 'specific-attribute'
     # 'mixed'
 
+    focussed_csv = os.path.join(os.path.dirname(output_file), "focus.csv")
+
     if split_policy == 'mixed':
         # MIXED
         print("multi-perspective decision tree")
-        retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv, output_file,
+        retrieve_decision_tree_multi_perspective_for_clusters(labels_file,
+                                                              j3tree_trace_measures_csv,
+                                                              output_file,
+                                                              focussed_csv,
                                                               label_feature_index)
     elif split_policy == 'attributes':
         # ATTRIBUTES
         print("attributes-only decision tree")
-        retrieve_decision_tree_attributes_for_clusters(labels_file, j3tree_trace_measures_csv, output_file,
+        retrieve_decision_tree_attributes_for_clusters(labels_file,
+                                                       j3tree_trace_measures_csv,
+                                                       output_file,
+                                                       focussed_csv,
                                                        label_feature_index)
     elif split_policy == 'specific-attribute':
         # SPECIFIC ATTRIBUTE
@@ -33,6 +42,10 @@ if __name__ == '__main__':
     elif split_policy == 'rules':
         # RULES
         print("rules-only decision tree")
-        retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, output_file, label_feature_index)
+        retrieve_decision_tree_rules_for_clusters(labels_file,
+                                                  j3tree_trace_measures_csv,
+                                                  output_file,
+                                                  focussed_csv,
+                                                  label_feature_index)
     else:
         print("ERROR: Decision tree split policy not recognized")

@@ -357,7 +357,7 @@ It build clusters sub-logs from the leaves of the tree
                                cluster_index) + '.xes')
 
 
-def import_labels(labels_file, j3tree_trace_measures_csv, label_feature_index=1):
+def import_labels(labels_file, j3tree_trace_measures_csv, focussed_csv, label_feature_index=1):
     # Import labels
     labels = []
     feature_name = ""
@@ -376,7 +376,6 @@ def import_labels(labels_file, j3tree_trace_measures_csv, label_feature_index=1)
     # import data
     featured_data = [[] for i in range(len(labels))]
 
-    focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"  # TODO improve this hard-coding
     # data, constraints_names = cmio.extract_detailed_perspective(j3tree_trace_measures_csv, focussed_csv)
     data, constraints_names = j3tio.extract_detailed_trace_perspective_csv(j3tree_trace_measures_csv, focussed_csv)
     # transpose_sj2t(data)
@@ -389,7 +388,7 @@ def import_labels(labels_file, j3tree_trace_measures_csv, label_feature_index=1)
     return data, labels, constraints_names, feature_name
 
 
-def import_labels_multi_perspective(labels_file, j3tree_trace_measures_csv, label_feature_index=1):
+def import_labels_multi_perspective(labels_file, j3tree_trace_measures_csv, focussed_csv, label_feature_index=1):
     # Import labels
     labels = []
     selected_feature_name = ""
@@ -406,15 +405,14 @@ def import_labels_multi_perspective(labels_file, j3tree_trace_measures_csv, labe
             labels += [line[label_feature_index]]
 
     # import data
-    featured_data = [[] for i in range(len(labels))]
 
-    focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"  # TODO improve this hard-coding
     # data, constraints_names = cmio.extract_detailed_perspective(j3tree_trace_measures_csv, focussed_csv)
     data, features_names = j3tio.extract_detailed_trace_multi_perspective_csv(j3tree_trace_measures_csv,
                                                                               labels_file,
                                                                               focussed_csv,
                                                                               label_feature_index)
     # transpose_sj2t(data)
+    # featured_data = [[] for i in range(len(labels))]
     # for constraint in data:
     #     for trace in data[constraint]:
     #         if trace == 'Constraint':
@@ -424,7 +422,7 @@ def import_labels_multi_perspective(labels_file, j3tree_trace_measures_csv, labe
     return data, labels, features_names, selected_feature_name
 
 
-def import_labels_attributes(labels_file, label_feature_index=1):
+def import_labels_attributes(labels_file, focussed_csv, label_feature_index=1):
     # Import labels
     labels = []
     selected_feature_name = ""
@@ -441,9 +439,7 @@ def import_labels_attributes(labels_file, label_feature_index=1):
             labels += [line[label_feature_index]]
 
     # import data
-    featured_data = [[] for i in range(len(labels))]
 
-    focussed_csv = "experiments/DECISION-TREE-CLUSTERS/3-results/focus.csv"  # TODO improve this hard-coding
     # data, constraints_names = cmio.extract_detailed_perspective(j3tree_trace_measures_csv, focussed_csv)
     # data, features_names = j3tio.extract_detailed_trace_multi_perspective_csv(j3tree_trace_measures_csv,
     #                                                                           labels_file,
@@ -453,6 +449,7 @@ def import_labels_attributes(labels_file, label_feature_index=1):
                                                                        focussed_csv,
                                                                        label_feature_index)
     # transpose_sj2t(data)
+    # featured_data = [[] for i in range(len(labels))]
     # for constraint in data:
     #     for trace in data[constraint]:
     #         if trace == 'Constraint':
@@ -462,13 +459,17 @@ def import_labels_attributes(labels_file, label_feature_index=1):
     return data, labels, features_names, selected_feature_name
 
 
-def retrieve_decision_tree_for_clusters(labels_file, j3tree_trace_measures_csv, sj2t_trace_output_file,
-                                        label_feature_index=1):
+def retrieve_decision_tree_rules_for_clusters(labels_file,
+                                              j3tree_trace_measures_csv,
+                                              sj2t_trace_output_file,
+                                              focussed_csv,
+                                              label_feature_index=1):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
 where the splits are declare rules
 
     label_index 1 is always the clusters label
+    :param focussed_csv:
     :param labels_file:
     :param j3tree_trace_measures_csv:
     :param sj2t_trace_output_file:
@@ -478,6 +479,7 @@ where the splits are declare rules
     print("Importing data...")
     featured_data, labels, constraints_names, feature_name = import_labels(labels_file,
                                                                            j3tree_trace_measures_csv,
+                                                                           focussed_csv,
                                                                            label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
@@ -501,13 +503,14 @@ where the splits are declare rules
 
 
 def retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv,
-                                                          sj2t_trace_output_file,
+                                                          sj2t_trace_output_file, focussed_csv,
                                                           label_feature_index=1):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
 where the splits are either declare rules or attributes
 
     label_index 1 is always the clusters label
+    :param focussed_csv:
     :param labels_file:
     :param j3tree_trace_measures_csv:
     :param sj2t_trace_output_file:
@@ -517,6 +520,7 @@ where the splits are either declare rules or attributes
     print("Importing data...")
     featured_data, labels, features_names, selected_feature_name = import_labels_multi_perspective(labels_file,
                                                                                                    j3tree_trace_measures_csv,
+                                                                                                   focussed_csv,
                                                                                                    label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
@@ -539,14 +543,17 @@ where the splits are either declare rules or attributes
                                     )
 
 
-def retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv,
+def retrieve_decision_tree_multi_perspective_for_clusters(labels_file,
+                                                          j3tree_trace_measures_csv,
                                                           sj2t_trace_output_file,
+                                                          focussed_csv,
                                                           label_feature_index=1):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
 where the splits are attributes
 
     label_index 1 is always the clusters label
+    :param focussed_csv:
     :param labels_file:
     :param j3tree_trace_measures_csv:
     :param sj2t_trace_output_file:
@@ -556,6 +563,7 @@ where the splits are attributes
     print("Importing data...")
     featured_data, labels, features_names, selected_feature_name = import_labels_multi_perspective(labels_file,
                                                                                                    j3tree_trace_measures_csv,
+                                                                                                   focussed_csv,
                                                                                                    label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
@@ -578,8 +586,10 @@ where the splits are attributes
                                     )
 
 
-def retrieve_decision_tree_attributes_for_clusters(labels_file, j3tree_trace_measures_csv,
+def retrieve_decision_tree_attributes_for_clusters(labels_file,
+                                                   j3tree_trace_measures_csv,
                                                    sj2t_trace_output_file,
+                                                   focussed_csv,
                                                    label_feature_index=1):
     """
 Use existing decision tree building techniques to retrieve a decision tree for your clusters
@@ -594,6 +604,7 @@ where the splits are attributes
     """
     print("Importing data...")
     featured_data, labels, features_names, selected_feature_name = import_labels_attributes(labels_file,
+                                                                                            focussed_csv,
                                                                                             label_feature_index)
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
