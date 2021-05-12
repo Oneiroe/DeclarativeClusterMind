@@ -495,11 +495,27 @@ where the splits are declare rules
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=constraints_names,
-                                    class_names=[feature_name + "_" + str(i) for i in labels],
+                                    class_names=[feature_name + "_" + str(i) for i in clf.classes_],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True
                                     )
+
+    for cluster in set(labels):
+        print(f"Decision tree of cluster {cluster}", end="\r")
+        current_labels = np.where(labels != cluster, 'others', labels)
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(featured_data, current_labels)
+        tree.plot_tree(clf)
+        # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+        dot_data = tree.export_graphviz(clf,
+                                        out_file=sj2t_trace_output_file + "_" + feature_name + "_" + cluster + ".dot",
+                                        feature_names=constraints_names,
+                                        class_names=[feature_name + "_" + str(i) for i in clf.classes_],
+                                        filled=True,
+                                        rounded=True,
+                                        # special_characters = True
+                                        )
 
 
 def retrieve_decision_tree_multi_perspective_for_clusters(labels_file, j3tree_trace_measures_csv,
@@ -536,7 +552,7 @@ where the splits are either declare rules or attributes
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=features_names,
-                                    class_names=[selected_feature_name + "_" + str(i) for i in labels],
+                                    class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True
@@ -579,11 +595,26 @@ where the splits are attributes
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=features_names,
-                                    class_names=[selected_feature_name + "_" + str(i) for i in labels],
+                                    class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True
                                     )
+    for cluster in set(labels):
+        print(f"Decision tree of cluster {cluster}", end="\r")
+        current_labels = np.where(labels != cluster, 'others', labels)
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(featured_data, current_labels)
+        tree.plot_tree(clf)
+        # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+        dot_data = tree.export_graphviz(clf,
+                                        out_file=sj2t_trace_output_file + "_" + selected_feature_name + "_" + cluster + ".dot",
+                                        feature_names=features_names,
+                                        class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
+                                        filled=True,
+                                        rounded=True,
+                                        # special_characters = True
+                                        )
 
 
 def retrieve_decision_tree_attributes_for_clusters(labels_file,
@@ -620,8 +651,24 @@ where the splits are attributes
     dot_data = tree.export_graphviz(clf,
                                     out_file=sj2t_trace_output_file,
                                     feature_names=features_names,
-                                    class_names=[selected_feature_name + "_" + str(i) for i in labels],
+                                    class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
                                     filled=True,
                                     rounded=True,
                                     # special_characters = True
                                     )
+
+    for cluster in set(labels):
+        print(f"Decision tree of cluster {cluster}", end="\r")
+        current_labels = np.where(labels != cluster, 'others', labels)
+        clf = tree.DecisionTreeClassifier()
+        clf = clf.fit(featured_data, current_labels)
+        tree.plot_tree(clf)
+        # dot_data = tree.export_graphviz(clf, out_file=sj2t_trace_output_file)
+        dot_data = tree.export_graphviz(clf,
+                                        out_file=sj2t_trace_output_file + "_" + selected_feature_name + "_" + cluster + ".dot",
+                                        feature_names=features_names,
+                                        class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
+                                        filled=True,
+                                        rounded=True,
+                                        # special_characters = True
+                                        )
