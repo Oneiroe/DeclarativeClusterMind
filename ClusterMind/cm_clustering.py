@@ -66,19 +66,31 @@ def initialize_centroids(measures_num, centroids_num):
     return block_diag_einsum(a, centroids_num)
 
 
-def cluster_traces(input2D, traces, constraints, measures, algorithm):
+def cluster_traces(input2D, apply_pca_flag, features, measures, algorithm):
+    """
+Cluste the traces according to the selected algorithm
+    :param input2D:
+    :param apply_pca_flag:
+    :param features:
+    :param measures:
+    :param algorithm:
+    :return:
+    """
     ## CLUSTERING
 
     #  number of clusters
     nc = input2D.shape[1]  # number of features actually used
-    # nc = constraints  # total number of constraints
+    # nc = features  # total number of constraints
     # nc = 10  # fixed number, for debugging
 
     if nc > len(input2D):
         # when the number of clusters is greater than the number of traces algorithms like k-means trow exceptions
         nc = len(input2D)
     if nc == 1:
-        nc = pd.DataFrame(input2D).nunique()[0]
+        if apply_pca_flag:
+            nc = features
+        else:
+            nc = pd.DataFrame(input2D).nunique()[0]  # works only if PCA is not enabled
 
     if (algorithm == 'kmeans'):
         # K-means
@@ -290,7 +302,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     constraints = input3D.shape[1]
     measures = input3D.shape[2]
 
-    clusters = cluster_traces(input2D, traces, constraints, measures, algorithm)
+    clusters = cluster_traces(input2D, apply_pca_flag, constraints, measures, algorithm)
 
     return clusters, pca, input2D
 
@@ -888,7 +900,7 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm)
 
     clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
                                                 apply_pca_flag, pca)
@@ -938,7 +950,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm)
 
     clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
                                                 False, None)
@@ -1000,7 +1012,7 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print(clustering_algorithm)
     print("Traces: " + str(traces_num))
     print("Features: " + str(features_num))
-    clusters = cluster_traces(input2D, traces_num, features_num, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm)
 
     clustering_postprocessing_and_visualization(input2D, clusters, measures_num, constraints_names, visualization_flag,
                                                 apply_pca_flag, pca)
