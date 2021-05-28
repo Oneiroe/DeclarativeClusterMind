@@ -742,12 +742,12 @@ Visualize the silhouette score of each cluster and trace
     ax1.set_yticks([])  # Clear the yaxis labels / ticks
     ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
 
-    plt.show()
+    plt.show(block=False)
 
 
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
-                           visualization_flag, apply_pca):
+                           visualization_flag, apply_pca_flag):
     """
     Cluster the traces of a log according to a set of declarative rules and their trace measurements
 
@@ -757,7 +757,7 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
     :param boolean_confidence:
     :param output_folder:
     :param visualization_flag:
-    :param apply_pca:
+    :param apply_pca_flag:
     """
     print(clustering_algorithm)
 
@@ -768,18 +768,36 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
     # CLUSTERING
     clusters, pca, input2D = cluster_traces_from_rules_trace_measures(trace_measures_csv_file_path,
                                                                       clustering_algorithm,
-                                                                      boolean_confidence, apply_pca)
+                                                                      boolean_confidence, apply_pca_flag)
 
+    clustering_postprocessing_and_visualization(input2D, clusters, measures_num, constraints_names, visualization_flag,
+                                                apply_pca_flag, pca)
+
+
+def clustering_postprocessing_and_visualization(input2D, clusters, measures_num, features_names, visualization_flag,
+                                                apply_pca_flag, pca):
+    """
+Retrieve and axport cluster statistics and visualization if enabled
+    :param visualization_flag: 
+    :param input2D: 
+    :param clusters: 
+    :param measures_num: 
+    :param features_names: 
+    :param apply_pca_flag: 
+    :param pca: 
+    """
     # STATS
+    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
+    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
+    if apply_pca_flag:
+        if measures_num > 0:
+            visualize_pca_relevant_constraints(clusters, pca, measures_num, features_names, output_folder)
+        else:
+            visualize_pca_relevant_feature(pca, features_names, output_folder)
     # average Silhouette coefficient
     traces_cluster_labels = clusters.fit_predict(input2D)
     mean_silhouette = silhouette_score(input2D, traces_cluster_labels)
     print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-
-    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
-    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
-    if apply_pca:
-        visualize_pca_relevant_constraints(clusters, pca, measures_num, constraints_names, output_folder)
 
     # VISUALIZATION
     if visualization_flag:
@@ -791,11 +809,11 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
         plot_tSNE_3d(input2D, clusters)
         # visualize_matrices(input2D, clusters)
 
-        threshold = 0.95
+        # threshold = 0.95
         # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
         # visualize_constraints_in_clusters(clusters, labels, traces_index)
 
-        visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+        # visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
     else:
         print(">>>>>>>>>>>> Visualization SKIPPED")
 
@@ -872,36 +890,8 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     print("Clustering...")
     clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
 
-    # STATS
-    # average Silhouette coefficient
-    traces_cluster_labels = clusters.fit_predict(input2D)
-    mean_silhouette = silhouette_score(input2D, traces_cluster_labels)
-    print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-
-    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
-    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
-    if apply_pca_flag:
-        visualize_pca_relevant_feature(pca, feature_names, output_folder)
-
-    # VISUALIZATION
-    if visualization_flag:
-        print(">>>>>>>>>>>> Visualization")
-        # plot_clusters_imperative_models(clusters_logs)
-
-        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
-
-        plot_tSNE_3d(input2D, clusters)
-        # visualize_matrices(input2D, clusters)
-
-        # plot_dendrogram(clusters.fit(input2D))
-
-        # threshold = 0.95
-        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
-        # visualize_constraints_in_clusters(clusters, labels, traces_index)
-
-        # visualize_centroids_constraints(0, pca, 0, measures_num, constraints_names, output_folder)
-    else:
-        print(">>>>>>>>>>>> Visualization SKIPPED")
+    clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
+                                                apply_pca_flag, pca)
 
 
 def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag):
@@ -950,36 +940,8 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     print("Clustering...")
     clusters = cluster_traces(input2D, traces, attributes, 0, clustering_algorithm)
 
-    # STATS
-    # average Silhouette coefficient
-    traces_cluster_labels = clusters.fit_predict(input2D)
-    mean_silhouette = silhouette_score(input2D, traces_cluster_labels)
-    print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-
-    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
-    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
-    # if apply_pca_flag:
-    #     visualize_pca_relevant_feature(pca, feature_names, output_folder)
-
-    # VISUALIZATION
-    if visualization_flag:
-        print(">>>>>>>>>>>> Visualization")
-        # plot_clusters_imperative_models(clusters_logs)
-
-        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
-
-        plot_tSNE_3d(input2D, clusters)
-        # visualize_matrices(input2D, clusters)
-
-        # plot_dendrogram(clusters.fit(input2D))
-
-        # threshold = 0.95
-        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
-        # visualize_constraints_in_clusters(clusters, labels, traces_index)
-
-        # visualize_centroids_constraints(0, pca, 0, measures_num, constraints_names, output_folder)
-    else:
-        print(">>>>>>>>>>>> Visualization SKIPPED")
+    clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
+                                                False, None)
 
 
 def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
@@ -1040,36 +1002,8 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print("Features: " + str(features_num))
     clusters = cluster_traces(input2D, traces_num, features_num, 0, clustering_algorithm)
 
-    # STATS
-    # average Silhouette coefficient
-    traces_cluster_labels = clusters.fit_predict(input2D)
-    mean_silhouette = silhouette_score(input2D, traces_cluster_labels)
-    print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-
-    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
-    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
-    if apply_pca_flag:
-        visualize_pca_relevant_feature(pca, features_names, output_folder)
-
-    # VISUALIZATION
-    if visualization_flag:
-        print(">>>>>>>>>>>> Visualization")
-        # plot_clusters_imperative_models(clusters_logs)
-
-        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
-
-        plot_tSNE_3d(input2D, clusters)
-        # visualize_matrices(input2D, clusters)
-
-        # plot_dendrogram(clusters.fit(input2D))
-
-        # threshold = 0.95
-        # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
-        # visualize_constraints_in_clusters(clusters, labels, traces_index)
-
-        # visualize_centroids_constraints(0, pca, 0, measures_num, constraints_names, output_folder)
-    else:
-        print(">>>>>>>>>>>> Visualization SKIPPED")
+    clustering_postprocessing_and_visualization(input2D, clusters, measures_num, constraints_names, visualization_flag,
+                                                apply_pca_flag, pca)
 
 
 if __name__ == '__main__':
