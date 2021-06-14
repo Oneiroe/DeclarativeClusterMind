@@ -7,7 +7,14 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
 
-def merge_logs(folder, files_prefix, output_path):
+@DeprecationWarning
+def legacy_merge_logs(folder, files_prefix, output_path):
+    """
+Deprecated function for result aggregation (see aggregate_clusters_measures.py now)
+    :param folder:
+    :param files_prefix:
+    :param output_path:
+    """
     with open(output_path + "-labels.csv", 'w') as output_file:
         csv_writer = csv.writer(output_file, delimiter=';')
         header = ["TRACE", "CLUSTER"]
@@ -29,16 +36,32 @@ def merge_logs(folder, files_prefix, output_path):
                     csv_writer.writerow([trace_index, file])
                     trace_index += 1
 
-        xes_exporter.apply(result_log, output)
-    print("Output here: " + output)
+        xes_exporter.apply(result_log, output_file)
+    print("Output here: " + output_path)
+
+
+def merge_logs(output_log_file_path, log_files_list):
+    """
+Merge the input log into one unique xes event log
+    :param output_log:
+    :param log_files_list:
+    """
+    result_log = EventLog()
+    for log_file in logs_files_paths:
+        print(log_file)
+        log = xes_importer.apply(log_file)
+        result_log._attributes.update(log._attributes)
+        result_log._classifiers.update(log._classifiers)
+        result_log._extensions.update(log._extensions)
+        result_log._omni.update(log._omni)
+
+        for trace in log:
+            result_log.append(trace)
+    xes_exporter.apply(result_log, output_log_file_path)
 
 
 if __name__ == '__main__':
     print(sys.argv)
-    folder = sys.argv[1]
-    prefix = sys.argv[2]
-    output = sys.argv[3]
-    # folder = "clustered-logs/"
-    # prefix = "Synthetic"
-    # output = folder + prefix + "-MERGED-log.xes"
-    merge_logs(folder, prefix, output)
+    output_log_file_path = sys.argv[1]
+    logs_files_paths = sys.argv[2:]
+    merge_logs(output_log_file_path, logs_files_paths)
