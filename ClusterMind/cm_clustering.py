@@ -68,7 +68,7 @@ def initialize_centroids(measures_num, centroids_num):
 
 def cluster_traces(input2D, apply_pca_flag, features, measures, algorithm):
     """
-Cluste the traces according to the selected algorithm
+Cluster the traces according to the selected algorithm
     :param input2D:
     :param apply_pca_flag:
     :param features:
@@ -294,7 +294,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     pca.fit(input2D)
     if apply_pca:
         input2D = pca.transform(input2D)
-    print('Dimension of data PCA= ' + str(input2D.shape))
+        print('Dimension of data PCA= ' + str(input2D.shape))
 
     # CLUSTERING
     print("Clustering...")
@@ -307,7 +307,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     return clusters, pca, input2D
 
 
-def split_log(log, clusters):
+def split_log_according_to_clusters(log, clusters):
     """
     Split the log into sub-logs according to the clusters, returns the list of logs
     :param log:
@@ -348,7 +348,7 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     print('>>>>>>>>>> Statistics')
     # load log
     log = pm.read_xes(log_file_path)
-    logs = split_log(log, clusters)
+    logs = split_log_according_to_clusters(log, clusters)
     # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     export_traces_labels_multi_perspective(log, clusters,
                                            output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
@@ -493,7 +493,7 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
     # load log
     log = pm.read_xes(log_file_path)
     all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
-    logs = split_log(log, clusters)
+    logs = split_log_according_to_clusters(log, clusters)
     # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
     export_traces_labels_multi_perspective(log, clusters,
                                            output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
@@ -754,7 +754,7 @@ Visualize the silhouette score of each cluster and trace
     ax1.set_yticks([])  # Clear the yaxis labels / ticks
     ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
 
-    plt.show(block=False)
+    plt.show()
 
 
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
@@ -818,7 +818,7 @@ Retrieve and axport cluster statistics and visualization if enabled
 
         visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
 
-        plot_tSNE_3d(input2D, clusters)
+        # plot_tSNE_3d(input2D, clusters)
         # visualize_matrices(input2D, clusters)
 
         # threshold = 0.95

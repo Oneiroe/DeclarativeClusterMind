@@ -484,9 +484,9 @@ where the splits are declare rules
     # X: [n_samples, n_features] --> featured data: for each trace put the constraint feature vector
     # Y: [n_samples] --> target: for each trace put the clusters label
     print("Building decision Tree...")
-    featured_data = np.nan_to_num(np.array(featured_data), posinf=1.7976931348623157e+100,
-                                  neginf=-1.7976931348623157e+100)
-    labels = np.nan_to_num(np.array(labels), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    featured_data = np.nan_to_num(np.array(featured_data), posinf=1.7976931348623157e+32,
+                                  neginf=-1.7976931348623157e+32)
+    labels = np.nan_to_num(np.array(labels), posinf=1.7976931348623157e+32, neginf=-1.7976931348623157e+32)
     clf = tree.DecisionTreeClassifier()
     clf = clf.fit(featured_data, labels)
     print("Exporting decision Tree...")

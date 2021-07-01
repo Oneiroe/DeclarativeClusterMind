@@ -40,11 +40,11 @@ Deprecated function for result aggregation (see aggregate_clusters_measures.py n
     print("Output here: " + output_path)
 
 
-def merge_logs(output_log_file_path, log_files_list):
+def merge_logs(output_log_file_path, logs_files_paths):
     """
 Merge the input log into one unique xes event log
     :param output_log:
-    :param log_files_list:
+    :param logs_files_paths:
     """
     result_log = EventLog()
     for log_file in logs_files_paths:
