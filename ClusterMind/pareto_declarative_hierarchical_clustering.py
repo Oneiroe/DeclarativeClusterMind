@@ -1,8 +1,10 @@
 import sys
 import subprocess
+
 from random import random
 import graphviz
 
+import ClusterMind.IO.J3Tree_import as j3io
 import utils.split_log_according_to_declare_model as splitter
 
 from pm4py.objects.log.obj import EventLog
@@ -10,6 +12,7 @@ from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
 JANUS_JAR_PATH_GLOBAL = ""
+SIMPLIFICATION_FLAG = False
 
 
 class ClusterNode:
@@ -55,14 +58,16 @@ class ClusterNode:
     def print_node_graphviz(self):
         if self.ok:
             # return f"[{len(self.log)}]"
-            return f"[{len(xes_importer.apply(self.log_path))}]"
+            # return f"[{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence:.2f}"
+            return f"{self.node_id} [{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence}"
         else:
             # return f"<[{len(self.log)}]>"
-            return f"<[{len(xes_importer.apply(self.log_path))}]>"
+            # return f"<[{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence:.2f}>"
+            return f"{self.node_id} <[{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence}>"
 
 
 def print_tree_graphviz(graph, node):
-    this_node_code = node.print_node_graphviz() + node.node_id
+    this_node_code = node.node_id
     if node.ok:
         this_node = graph.node(this_node_code, label=node.print_node_graphviz())
     else:
@@ -100,14 +105,14 @@ Lauch Janus command line to retrieve a declarative model for a specific log
     print(command)
 
     # process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE) # to suppress the stdOutput
-    process = subprocess.Popen(command, shell=True)
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL)
     process.wait()
     print(process.returncode)
 
     if simplification_flag:
         command = MINERFUL_SIMPLIFIER_COMMAND_LINE(JANUS_JAR_PATH_GLOBAL, output_model)
         print(command)
-        process = subprocess.Popen(command, shell=True)
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL)
         process.wait()
         print(process.returncode)
 
@@ -123,11 +128,10 @@ Lauch Janus command line to retrieve a declarative model measures for a specific
     """
     command = JANUS_MEASUREMENT_COMMAND_LINE(JANUS_JAR_PATH_GLOBAL, log_path, model_path, output, measure)
     print(command)
-    process = subprocess.Popen(command, shell=True)
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.DEVNULL)
     process.wait()
     print(process.returncode)
 
-    #     TODO return the paths to the different measurements outputs
     event_measures = output[:-4] + "[eventsEvaluation]"
     trace_measures = output[:-4] + "[tracesMeasures].csv"
     trace_stats = output[:-4] + "[tracesMeasuresStats].csv"
@@ -145,13 +149,14 @@ Recursively build the hierarchical cluster calling the function in each split cl
     # Discover model
     current_node.model = discover_declarative_model(current_node.log_path,
                                                     output_folder + f"model_{current_node.node_id}.json",
-                                                    0, split_threshold, False)
+                                                    0, split_threshold, SIMPLIFICATION_FLAG)
 
     # measure model
     event_measures, trace_measures, trace_stats, log_measures = measure_declarative_model(current_node.log_path,
                                                                                           current_node.model,
                                                                                           output_folder + f"output_{current_node.node_id}.csv",
                                                                                           "Confidence")
+    current_node.model_log_confidence = float(j3io.import_log_measures(log_measures)['MODEL'])
 
     # split_log
     output_log_80, output_log_20 = splitter.split_log_according_to_model(current_node.log_path,
@@ -202,5 +207,6 @@ if __name__ == '__main__':
     output_folder = sys.argv[2]
     split_threshold = float(sys.argv[3])
     JANUS_JAR_PATH_GLOBAL = sys.argv[4]
+    SIMPLIFICATION_FLAG = sys.argv[5] == "True"
 
     pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold)

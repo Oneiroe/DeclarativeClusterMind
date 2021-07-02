@@ -340,6 +340,42 @@ def import_trace_measures(input_file_path, input_file_format, boolean_flag=False
         print("[" + str(input_file_format) + "]Format not recognised")
 
 
+def import_log_measures_from_csv(input_file_path):
+    """
+    interface to import the log measures from Janus3 log measures result CSV file.
+
+    :param input_file_path: Janus3 log measures result file
+    :return: HashMap mapping constraint->measure->value
+    """
+    result = {}
+    with open(input_file_path, 'r') as input_file:
+        reader = csv.DictReader(input_file, delimiter=';')
+        for line in reader:
+            for measure in line:
+                if measure == 'Constraint':
+                    continue
+                result[line['Constraint']] = line[measure]
+
+    return result
+
+
+def import_log_measures(input_file_path):
+    """
+    interface to import the log measures from Janus3 log measures result file.
+    It calls the appropriate function given the file format.
+
+    :param input_file_path: Janus3 log measures result file
+    :return: HashMap mapping constraint->measure->value
+    """
+    input_file_format = input_file_path.split('.')[-1]
+    if input_file_format == 'csv':
+        return import_log_measures_from_csv(input_file_path)
+    elif input_file_format == 'json':
+        print("Json import not yet implemented")
+    else:
+        print("[" + str(input_file_format) + "]Format not recognised")
+
+
 def import_trace_labels_csv(trace_measures_csv_file_path, constraints_num, threshold=0.95):
     """
         Import the labels of the trace measures csv containing the measurement of every constraint in every trace.
