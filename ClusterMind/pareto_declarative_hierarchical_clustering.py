@@ -33,9 +33,9 @@ class ClusterNode:
 
     def print_node(self):
         if self.model:
-            print(f"[{len(self.log)}]")
+            print(f"[{self.node_id}]")
         else:
-            print(f"<[{len(self.log)}]>")
+            print(f"<[{self.node_id}]>")
 
     def print_tree_dfs(self):
         if self.ok:
@@ -45,6 +45,25 @@ class ClusterNode:
         if self.nok:
             print('\t', end="")
             self.nok.print_tree_dfs()
+
+    def print_leaves_dfs(self):
+        if not (self.ok and self.nok):
+            self.print_node()
+            return
+        if self.ok:
+            self.ok.print_leaves_dfs()
+        if self.nok:
+            self.nok.print_leaves_dfs()
+
+    def get_leaves_dfs(self, res):
+        # TODO WIP
+        if not (self.ok and self.nok):
+            return {self}
+        if self.ok:
+            res.union(self.ok.get_leaves_dfs(res))
+        if self.nok:
+            res.union(self.nok.get_leaves_dfs(res))
+        return res
 
     def print_tree_bfs(self):
         self.print_node()
@@ -199,6 +218,12 @@ The recursion ends is:
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, root)
     graph.render(filename=output_folder + "TREE.dot")
+
+    print('### Result Leaves')
+    root.print_leaves_dfs()
+    # leaves = set()
+    # root.get_leaves_dfs(leaves)
+    # print(leaves)
 
 
 if __name__ == '__main__':
