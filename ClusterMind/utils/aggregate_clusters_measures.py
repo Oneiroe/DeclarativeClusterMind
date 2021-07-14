@@ -13,7 +13,13 @@ def aggregate_clusters_measures(folder, files_suffix, output_file="aggregated_re
                 for line in cluster_csv:
                     result_map.setdefault(line[0], [])
                     if line[0] == "Constraint":
-                        result_map[line[0]] += ["Cluster_" + str(file.split(".xes"+files_suffix)[0].split('cluster_')[-1])]
+                        # TODO too adhoc naming
+                        if "xes" in file:
+                            result_map[line[0]] += ["Cluster_" + str(file.split(".xes"+files_suffix)[0].split('cluster_')[-1])]
+                        elif "csv" in file:
+                            result_map[line[0]] += ["Cluster_" + str(file.split("[logMeasures]")[0].split('output_')[-1])]
+                        else:
+                            result_map[line[0]] += ["Cluster_" + str(file)]
                     else:
                         result_map[line[0]] += [line[1]]
 

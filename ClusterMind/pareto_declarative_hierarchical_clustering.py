@@ -1,15 +1,21 @@
+import os
 import sys
 import subprocess
+import csv
 
 from random import random
 import graphviz
 
 import ClusterMind.IO.J3Tree_import as j3io
+import ClusterMind.utils.aggregate_clusters_measures
 import utils.split_log_according_to_declare_model as splitter
 
 from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+from pm4py.algo.filtering.log.attributes import attributes_filter
+
+from ClusterMind.cm_clustering import get_attributes_statistics_in_trace
 
 JANUS_JAR_PATH_GLOBAL = ""
 SIMPLIFICATION_FLAG = False
@@ -55,15 +61,16 @@ class ClusterNode:
         if self.nok:
             self.nok.print_leaves_dfs()
 
-    def get_leaves_dfs(self, res):
+    def get_leaves_dfs(self):
         # TODO WIP
         if not (self.ok and self.nok):
             return {self}
+        result = set()
         if self.ok:
-            res.union(self.ok.get_leaves_dfs(res))
+            result = result.union(self.ok.get_leaves_dfs())
         if self.nok:
-            res.union(self.nok.get_leaves_dfs(res))
-        return res
+            result = result.union(self.nok.get_leaves_dfs())
+        return result
 
     def print_tree_bfs(self):
         self.print_node()
@@ -83,6 +90,16 @@ class ClusterNode:
             # return f"<[{len(self.log)}]>"
             # return f"<[{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence:.2f}>"
             return f"{self.node_id} <[{len(xes_importer.apply(self.log_path))}] model:{self.model_log_confidence}>"
+
+    def remove_intermediary_files(self, directory):
+        if self.ok or self.nok:
+            for file in os.listdir(directory):
+                if file.__contains__(self.node_id):
+                    os.remove(os.path.join(directory, file))
+        if self.ok:
+            self.ok.remove_intermediary_files(directory)
+        if self.nok:
+            self.nok.remove_intermediary_files(directory)
 
 
 def print_tree_graphviz(graph, node):
@@ -196,6 +213,33 @@ Recursively build the hierarchical cluster calling the function in each split cl
     recursive_log_split(current_node.nok, output_folder)
 
 
+def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_file_path):
+    """
+    Export a csv file containing for each trace the corresponding cluster and values of the attributes
+    :param output_file_path:
+    """
+    print("Exporting traces cluster labels to " + output_file_path)
+    log = xes_importer.apply(input_log)
+    clusters_logs = [(l, xes_importer.apply(l.log_path)) for l in clusters_nodes]
+    with open(output_file_path, 'w') as output_file:
+        all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
+
+        csv_writer = csv.writer(output_file, delimiter=';')
+        header = [
+                     "TRACE",
+                     "CLUSTER"
+                 ] + all_events_attributes
+        csv_writer.writerow(header)
+
+        # put traces in sub-logs
+        for trace_index in range(len(log)):
+            trace_attributes = get_attributes_statistics_in_trace(log[trace_index], all_events_attributes)
+            for c in clusters_logs:
+                if log[trace_index] in c[1]:
+                    csv_writer.writerow([trace_index, c[0].node_id] + trace_attributes)
+                    break
+
+
 def pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold=0.8, min_leaf_size=0):
     """
 Cluster the log according recursively through declarative models:
@@ -221,9 +265,18 @@ The recursion ends is:
 
     print('### Result Leaves')
     root.print_leaves_dfs()
-    # leaves = set()
-    # root.get_leaves_dfs(leaves)
-    # print(leaves)
+    clusters_leaves = root.get_leaves_dfs()
+    print(f"Number of clusters: {len(clusters_leaves)}")
+
+    ## Post processing ready for decision trees
+    # keep only final clusters files
+    root.remove_intermediary_files(output_folder)
+    # aggregate the clusters X rules results
+    ClusterMind.utils.aggregate_clusters_measures.aggregate_clusters_measures(output_folder,
+                                                                              "[logMeasures].csv",
+                                                                              "aggregated_result.csv")
+    # export traces labels
+    export_traces_labels_multi_perspective(input_log, clusters_leaves, os.path.join(output_folder, "traces-labels.csv"))
 
 
 if __name__ == '__main__':
