@@ -10,12 +10,16 @@ import ClusterMind.IO.J3Tree_import as j3io
 import ClusterMind.utils.aggregate_clusters_measures
 import utils.split_log_according_to_declare_model as splitter
 
+import pm4py as pm
 from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.algo.filtering.log.attributes import attributes_filter
+import pm4py.statistics.traces.log as stats
 
-from ClusterMind.cm_clustering import get_attributes_statistics_in_trace
+from ClusterMind.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
+
+from sklearn.metrics import silhouette_score, silhouette_samples
 
 JANUS_JAR_PATH_GLOBAL = ""
 SIMPLIFICATION_FLAG = False
@@ -220,9 +224,10 @@ def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_fil
     """
     print("Exporting traces cluster labels to " + output_file_path)
     log = xes_importer.apply(input_log)
+    all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
     clusters_logs = [(l, xes_importer.apply(l.log_path)) for l in clusters_nodes]
+    labels = []
     with open(output_file_path, 'w') as output_file:
-        all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
 
         csv_writer = csv.writer(output_file, delimiter=';')
         header = [
@@ -236,8 +241,75 @@ def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_fil
             trace_attributes = get_attributes_statistics_in_trace(log[trace_index], all_events_attributes)
             for c in clusters_logs:
                 if log[trace_index] in c[1]:
+                    labels += [c[0].node_id]
                     csv_writer.writerow([trace_index, c[0].node_id] + trace_attributes)
                     break
+    return labels
+
+
+def export_cluster_statistics_multi_perspective(log_path, clusters_leaves, output_folder):
+    log = xes_importer.apply(input_log)
+    all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
+
+    with open(os.path.join(output_folder, 'clusters-stats.csv'), 'w') as output:
+        csv_out = csv.writer(output, delimiter=';')
+        csv_out.writerow([
+                             'CLUSTER_NUM',
+                             'TRACES',
+                             'TRACE-LEN-AVG',
+                             'TRACE-LEN-MIN',
+                             'TRACE-LEN-MAX',
+                             'DURATION-MEDIAN',
+                             'DURATION-MIN',
+                             'DURATION-MAX',
+                             'CASE-ARRIVAL-AVG',
+                             'TASKS-NUM',
+                             'TASKS',
+                             'FITNESS', 'PRECISION', 'F1'
+                         ] + all_events_attributes
+                         )
+        f1_avg = 0
+        for cluster_node in clusters_leaves:
+            current_s_log = xes_importer.apply(cluster_node.log_path)
+            traces_num = len(current_s_log)
+            events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
+            events_min = min(len(i) for i in current_s_log)
+            events_max = max(len(i) for i in current_s_log)
+            unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
+            unique_tasks_num = len(unique_tasks)
+            duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
+            duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
+            duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
+            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
+
+            # F1 fitness et all
+            # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
+            petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log)
+            # FITNESS
+            # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
+            fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
+                                                                  final_marking)
+            # fitness = fitness_align_dictio['averageFitness']
+            fitness = fitness_replay_dictio['log_fitness']
+            # PRECISION:alignment vs token replay
+            # precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
+            precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
+            f1 = 2 * (precision * fitness) / (precision + fitness)
+            # print(fitness_align_dictio)
+            # print(f"Fitness: {fitness}")
+            # print(f"Precision: {prec_align}")
+            # print(f"F1: {f1}")
+            f1_avg += f1
+
+            # Attributes
+            events_attributes = get_attributes_statistics_in_log(current_s_log, all_events_attributes)
+
+            csv_out.writerow(
+                [cluster_node.node_id, traces_num, events_avg, events_min, events_max,
+                 duration_median, duration_min, duration_max, case_arrival_avg,
+                 unique_tasks_num, unique_tasks, fitness, precision, f1] + events_attributes)
+
+    print(f"average F1: {f1_avg / len(clusters_leaves)}")
 
 
 def pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold=0.8, min_leaf_size=0):
@@ -269,14 +341,35 @@ The recursion ends is:
     print(f"Number of clusters: {len(clusters_leaves)}")
 
     ## Post processing ready for decision trees
+    # save the reference measures for the original log
+    # event_measures, trace_measures, trace_stats, log_measures = measure_declarative_model(root.log_path,
+    #                                                                                       root.model,
+    #                                                                                       output_folder + f"output_{root.node_id}.csv",
+    #                                                                                       "Confidence")
+    #
+    # input3D = j3io.import_trace_measures(trace_measures, 'csv', boolean_flag=True)
+    # input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
+
+
     # keep only final clusters files
     root.remove_intermediary_files(output_folder)
+
     # aggregate the clusters X rules results
     ClusterMind.utils.aggregate_clusters_measures.aggregate_clusters_measures(output_folder,
                                                                               "[logMeasures].csv",
                                                                               "aggregated_result.csv")
     # export traces labels
-    export_traces_labels_multi_perspective(input_log, clusters_leaves, os.path.join(output_folder, "traces-labels.csv"))
+    labels = export_traces_labels_multi_perspective(input_log, clusters_leaves,
+                                                    os.path.join(output_folder, "traces-labels.csv"))
+
+    # export clusters stats
+    export_cluster_statistics_multi_perspective(input_log, clusters_leaves, output_folder)
+
+    # silhouette_score
+    # TODO WIP
+    # mean_silhouette = silhouette_score(input2D, labels)
+    # print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
+    # ClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
 
 
 if __name__ == '__main__':
