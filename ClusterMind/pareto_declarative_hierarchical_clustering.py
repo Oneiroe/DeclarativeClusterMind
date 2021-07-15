@@ -8,7 +8,7 @@ import graphviz
 
 import ClusterMind.IO.J3Tree_import as j3io
 import ClusterMind.utils.aggregate_clusters_measures
-import utils.split_log_according_to_declare_model as splitter
+import ClusterMind.utils.split_log_according_to_declare_model as splitter
 
 import pm4py as pm
 from pm4py.objects.log.obj import EventLog
