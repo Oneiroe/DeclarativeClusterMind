@@ -180,7 +180,7 @@ Lauch Janus command line to retrieve a declarative model measures for a specific
     return event_measures, trace_measures, trace_stats, log_measures
 
 
-def recursive_log_split(current_node, output_folder):
+def recursive_log_split(current_node, output_folder, min_leaf_len):
     """
 Recursively build the hierarchical cluster calling the function in each split cluster node
     :param current_node:
@@ -203,18 +203,18 @@ Recursively build the hierarchical cluster calling the function in each split cl
                                                                          trace_measures,
                                                                          current_node.threshold)
     # halt condition check
-    if len(output_log_80) == 0 or len(output_log_20) == 0:
+    if len(output_log_80) <= min_leaf_len or len(output_log_20) <= min_leaf_len:
         return
 
     current_node.insert_child_ok(None, current_node.threshold)
     xes_exporter.apply(output_log_80, output_folder + f"log_{current_node.ok.node_id}.xes")
     current_node.ok.log_path = output_folder + f"log_{current_node.ok.node_id}.xes"
-    recursive_log_split(current_node.ok, output_folder)
+    recursive_log_split(current_node.ok, output_folder, min_leaf_len)
 
     current_node.insert_child_nok(None, current_node.threshold)
     xes_exporter.apply(output_log_20, output_folder + f"log_{current_node.nok.node_id}.xes")
     current_node.nok.log_path = output_folder + f"log_{current_node.nok.node_id}.xes"
-    recursive_log_split(current_node.nok, output_folder)
+    recursive_log_split(current_node.nok, output_folder, min_leaf_len)
 
 
 def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_file_path):
@@ -328,7 +328,7 @@ The recursion ends is:
     # pre-phase
     # original_log = xes_importer.apply(input_log)
     root = ClusterNode(input_log, split_threshold)
-    recursive_log_split(root, output_folder)
+    recursive_log_split(root, output_folder, min_leaf_size)
 
     print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
@@ -349,7 +349,6 @@ The recursion ends is:
     #
     # input3D = j3io.import_trace_measures(trace_measures, 'csv', boolean_flag=True)
     # input2D = input3D.reshape((input3D.shape[0], input3D.shape[1] * input3D.shape[2]))
-
 
     # keep only final clusters files
     root.remove_intermediary_files(output_folder)
@@ -379,5 +378,6 @@ if __name__ == '__main__':
     split_threshold = float(sys.argv[3])
     JANUS_JAR_PATH_GLOBAL = sys.argv[4]
     SIMPLIFICATION_FLAG = sys.argv[5] == "True"
+    MIN_LEAF_SIZE = int(sys.argv[6])
 
-    pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold)
+    pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold, MIN_LEAF_SIZE)

@@ -36,6 +36,7 @@ SPLIT_POLICY="rules"
 SIMPLIFICATION_FLAG="False"
 PARETO_SPLIT_THRESHOLD=0.95
 INPUT_LOG="experiments/PARETO-SPLIT/00-INPUT-LOGS-MODELS/SEPSIS-log.xes"
+MIN_LEAF_SIZE=5
 
 # experiment folders
 EXPERIMENT_NAME="experiments/PARETO-SPLIT/"${LOG_NAME}"/clusters_"${PARETO_SPLIT_THRESHOLD}"-treeSplit_"${SPLIT_POLICY}
@@ -112,7 +113,7 @@ if test -f "${MODEL}"; then
   echo "$FILE already exists."
 else
   java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${MODEL}
-#  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
+  #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 
   # Simplify model, i.e., remove redundant constraints
   echo "################################ SIMPLIFICATION"
@@ -137,7 +138,7 @@ fi
 # PARETO 80:20 split of the log according to the model
 echo "################################ PARETO PRE-SPLIT"
 #python3 -m ClusterMind.utils.split_log_according_to_declare_model $INPUT_LOG $OUTPUT_TRACE_MEASURES_CSV $SPLIT_THRESHOLD $LOG_80_FIT $LOG_20_DIVERGENT
-python3 -m ClusterMind.pareto_declarative_hierarchical_clustering $INPUT_LOG $RESULTS_FOLDER"/" $PARETO_SPLIT_THRESHOLD "Janus.jar" $SIMPLIFICATION_FLAG
+python3 -m ClusterMind.pareto_declarative_hierarchical_clustering $INPUT_LOG $RESULTS_FOLDER"/" $PARETO_SPLIT_THRESHOLD "Janus.jar" $SIMPLIFICATION_FLAG $MIN_LEAF_SIZE
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
@@ -150,5 +151,3 @@ python3 -m DeclareTrees.decision_trees_for_clusters \
   "$RESULTS_FOLDER"/decision_tree.dot \
   1 \
   ${SPLIT_POLICY}
-
-
