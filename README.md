@@ -1,3 +1,3 @@
-#ClusterMind
+#DeCluster
 
-Behavioural trace clustering through declarative process mining
+Behavioural trace clustering through declarative rules
