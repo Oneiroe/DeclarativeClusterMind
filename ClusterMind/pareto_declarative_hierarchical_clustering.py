@@ -2,6 +2,9 @@ import os
 import sys
 import subprocess
 import csv
+import argparse
+from gooey import Gooey
+from gooey import GooeyParser
 
 from random import random
 import graphviz
@@ -180,7 +183,7 @@ Lauch Janus command line to retrieve a declarative model measures for a specific
     return event_measures, trace_measures, trace_stats, log_measures
 
 
-def recursive_log_split(current_node, output_folder, min_leaf_len):
+def recursive_log_split(current_node, output_folder, min_leaf_len, split_threshold):
     """
 Recursively build the hierarchical cluster calling the function in each split cluster node
     :param current_node:
@@ -209,12 +212,12 @@ Recursively build the hierarchical cluster calling the function in each split cl
     current_node.insert_child_ok(None, current_node.threshold)
     xes_exporter.apply(output_log_80, output_folder + f"log_{current_node.ok.node_id}.xes")
     current_node.ok.log_path = output_folder + f"log_{current_node.ok.node_id}.xes"
-    recursive_log_split(current_node.ok, output_folder, min_leaf_len)
+    recursive_log_split(current_node.ok, output_folder, min_leaf_len, split_threshold)
 
     current_node.insert_child_nok(None, current_node.threshold)
     xes_exporter.apply(output_log_20, output_folder + f"log_{current_node.nok.node_id}.xes")
     current_node.nok.log_path = output_folder + f"log_{current_node.nok.node_id}.xes"
-    recursive_log_split(current_node.nok, output_folder, min_leaf_len)
+    recursive_log_split(current_node.nok, output_folder, min_leaf_len, split_threshold)
 
 
 def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_file_path):
@@ -247,7 +250,7 @@ def export_traces_labels_multi_perspective(input_log, clusters_nodes, output_fil
     return labels
 
 
-def export_cluster_statistics_multi_perspective(log_path, clusters_leaves, output_folder):
+def export_cluster_statistics_multi_perspective(input_log, clusters_leaves, output_folder):
     log = xes_importer.apply(input_log)
     all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
 
@@ -328,7 +331,7 @@ The recursion ends is:
     # pre-phase
     # original_log = xes_importer.apply(input_log)
     root = ClusterNode(input_log, split_threshold)
-    recursive_log_split(root, output_folder, min_leaf_size)
+    recursive_log_split(root, output_folder, min_leaf_size, split_threshold)
 
     print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
@@ -371,13 +374,60 @@ The recursion ends is:
     # ClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
 
 
-if __name__ == '__main__':
-    print(sys.argv)
-    input_log = sys.argv[1]
-    output_folder = sys.argv[2]
-    split_threshold = float(sys.argv[3])
-    JANUS_JAR_PATH_GLOBAL = sys.argv[4]
-    SIMPLIFICATION_FLAG = sys.argv[5] == "True"
-    MIN_LEAF_SIZE = int(sys.argv[6])
+# python -m ClusterMind.pareto_declarative_hierarchical_clustering \
+#     -i experiments/PARETO-SPLIT/00-INPUT-LOGS-MODELS/SEPSIS-log.xes \
+#     -o experiments/PARETO-SPLIT/SEPSIS/pure-output/ \
+#     -t 0.95 \
+#     -j /home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/Janus.jar \
+#     -s False \
+#     -m 5
 
-    pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold, MIN_LEAF_SIZE)
+@Gooey
+def main():
+    """
+
+Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
+    """
+    # CLI/GUI PARSER #####
+    parser = GooeyParser(
+        description="Hierarchical clustering of a log according to its compliance to a declarative model.")
+    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
+
+    parser.add_argument('-i', '--input-log', help='Path to input Event Log File', type=str, widget='FileChooser')
+    parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
+                        widget='DirChooser')
+    parser.add_argument('-t', '--split-threshold', help='Measure threshold where to split the clusters', type=float,
+                        widget='DecimalField', default=0.95, gooey_options={'min': 0.0, 'max': 1.0})
+    parser.add_argument('-j', '--janus-jar-path-global', help='Path to Janus JAR executable', type=str,
+                        widget='FileChooser')
+    parser.add_argument('-s', '--simplification-flag',
+                        help='Flag to enable the simplification of the models at each step',
+                        action="store_true", widget='BlockCheckbox')
+    parser.add_argument('-l', '--min-leaf-size',
+                        help='Minimum size of the leaves/clusters below which the recursion is stopped', type=int,
+                        widget='IntegerField')
+    parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
+                        gooey_options={'visible': False})
+
+    args = parser.parse_args()
+    print(args)
+    input_log = args.input_log
+    output_folder = args.output_folder
+    split_threshold = args.split_threshold
+    global JANUS_JAR_PATH_GLOBAL, SIMPLIFICATION_FLAG
+    JANUS_JAR_PATH_GLOBAL = args.janus_jar_path_global
+    SIMPLIFICATION_FLAG = args.simplification_flag
+    min_leaf_size = args.min_leaf_size
+
+    pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold, min_leaf_size)
+
+
+if __name__ == '__main__':
+    # print(sys.argv)
+    # INPUT_LOG = sys.argv[1]
+    # OUTPUT_FOLDER = sys.argv[2]
+    # SPLIT_THRESHOLD = float(sys.argv[3])
+    # JANUS_JAR_PATH_GLOBAL = sys.argv[4]
+    # SIMPLIFICATION_FLAG = sys.argv[5] == "True"
+    # MIN_LEAF_SIZE = int(sys.argv[6])
+    main()
