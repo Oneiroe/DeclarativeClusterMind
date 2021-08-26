@@ -8,22 +8,24 @@ def aggregate_clusters_measures(folder, files_suffix, output_file="aggregated_re
 
     for file in os.listdir(folder):
         if file.endswith(files_suffix):
-            with open(folder + file, 'r') as cluster_file:
+            with open(os.path.join(folder, file), 'r') as cluster_file:
                 cluster_csv = csv.reader(cluster_file, delimiter=';')
                 for line in cluster_csv:
                     result_map.setdefault(line[0], [])
                     if line[0] == "Constraint":
                         # TODO too adhoc naming
                         if "xes" in file:
-                            result_map[line[0]] += ["Cluster_" + str(file.split(".xes"+files_suffix)[0].split('cluster_')[-1])]
+                            result_map[line[0]] += [
+                                "Cluster_" + str(file.split(".xes" + files_suffix)[0].split('cluster_')[-1])]
                         elif "csv" in file:
-                            result_map[line[0]] += ["Cluster_" + str(file.split("[logMeasures]")[0].split('output_')[-1])]
+                            result_map[line[0]] += [
+                                "Cluster_" + str(file.split("[logMeasures]")[0].split('output_')[-1])]
                         else:
                             result_map[line[0]] += ["Cluster_" + str(file)]
                     else:
                         result_map[line[0]] += [line[1]]
 
-    with open(folder + output_file, 'w') as result:
+    with open(os.path.join(folder, output_file), 'w') as result:
         csv_result = csv.writer(result, delimiter=';')
         for key in result_map.keys():
             # print([key] + result_map[key])

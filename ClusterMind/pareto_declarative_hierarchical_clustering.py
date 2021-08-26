@@ -191,13 +191,14 @@ Recursively build the hierarchical cluster calling the function in each split cl
     """
     # Discover model
     current_node.model = discover_declarative_model(current_node.log_path,
-                                                    output_folder + f"model_{current_node.node_id}.json",
+                                                    os.path.join(output_folder, f"model_{current_node.node_id}.json"),
                                                     0, split_threshold, SIMPLIFICATION_FLAG)
 
     # measure model
     event_measures, trace_measures, trace_stats, log_measures = measure_declarative_model(current_node.log_path,
                                                                                           current_node.model,
-                                                                                          output_folder + f"output_{current_node.node_id}.csv",
+                                                                                          os.path.join(output_folder,
+                                                                                                       f"output_{current_node.node_id}.csv"),
                                                                                           "Confidence")
     current_node.model_log_confidence = float(j3io.import_log_measures(log_measures)['MODEL'])
 
@@ -210,13 +211,13 @@ Recursively build the hierarchical cluster calling the function in each split cl
         return
 
     current_node.insert_child_ok(None, current_node.threshold)
-    xes_exporter.apply(output_log_80, output_folder + f"log_{current_node.ok.node_id}.xes")
-    current_node.ok.log_path = output_folder + f"log_{current_node.ok.node_id}.xes"
+    xes_exporter.apply(output_log_80, os.path.join(output_folder, f"log_{current_node.ok.node_id}.xes"))
+    current_node.ok.log_path = os.path.join(output_folder, f"log_{current_node.ok.node_id}.xes")
     recursive_log_split(current_node.ok, output_folder, min_leaf_len, split_threshold)
 
     current_node.insert_child_nok(None, current_node.threshold)
-    xes_exporter.apply(output_log_20, output_folder + f"log_{current_node.nok.node_id}.xes")
-    current_node.nok.log_path = output_folder + f"log_{current_node.nok.node_id}.xes"
+    xes_exporter.apply(output_log_20, os.path.join(output_folder, f"log_{current_node.nok.node_id}.xes"))
+    current_node.nok.log_path = os.path.join(output_folder, f"log_{current_node.nok.node_id}.xes")
     recursive_log_split(current_node.nok, output_folder, min_leaf_len, split_threshold)
 
 
@@ -336,7 +337,7 @@ The recursion ends is:
     print("### Graphviz")
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, root)
-    graph.render(filename=output_folder + "TREE.dot")
+    graph.render(filename=os.path.join(output_folder, "TREE.dot"))
 
     print('### Result Leaves')
     root.print_leaves_dfs()
