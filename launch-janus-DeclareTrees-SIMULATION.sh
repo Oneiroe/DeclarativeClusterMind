@@ -180,7 +180,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   #  -nanTraceValue,--nan-trace-value <number>
 
   #  keep only mean
-  #  python3 singleAggregationPerspectiveFocusCSV.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
+  #  python3 pySupport/singleAggregationPerspectiveFocusCSV_confidence-only.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
 done
 
 # merge results

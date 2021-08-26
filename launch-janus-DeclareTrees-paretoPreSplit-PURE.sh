@@ -1,7 +1,11 @@
 #!/bin/bash
 
+
+
 # WHAT: clusters the log in a hierarchical way dividing at each split the sub log according to 80:20 on a declarative process model
 # WHY: hopefully the clusters will make more sense from a declarative rules point of view
+
+source /home/alessio/Data/Phd/my_code/PyVEnv/ClusterMind/bin/activate
 
 ##################################################################
 # PARAMETERS
@@ -33,8 +37,10 @@ SPLIT_POLICY="rules"
 # 'mixed'
 
 # Pareto Split parameters
-SIMPLIFICATION_FLAG="False"
-PARETO_SPLIT_THRESHOLD=0.95
+#SIMPLIFICATION_FLAG="False"
+#SIMPLIFICATION_FLAG=""
+SIMPLIFICATION_FLAG="-s"
+PARETO_SPLIT_THRESHOLD=0.97
 INPUT_LOG="experiments/PARETO-SPLIT/00-INPUT-LOGS-MODELS/SEPSIS-log.xes"
 MIN_LEAF_SIZE=5
 
@@ -92,7 +98,7 @@ MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ABSENCE].json"
 MODEL_ENCODING="json"
 
-SPLIT_THRESHOLD=1.0
+SPLIT_THRESHOLD=0.95
 LOG_80_FIT=$INPUT_FOLDER"/"$LOG_NAME"-log[80-fit].xes"
 LOG_20_DIVERGENT=$INPUT_FOLDER"/"$LOG_NAME"-log[20-divergent].xes"
 
@@ -138,7 +144,7 @@ fi
 # PARETO 80:20 split of the log according to the model
 echo "################################ PARETO PRE-SPLIT"
 #python3 -m ClusterMind.utils.split_log_according_to_declare_model $INPUT_LOG $OUTPUT_TRACE_MEASURES_CSV $SPLIT_THRESHOLD $LOG_80_FIT $LOG_20_DIVERGENT
-python3 -m ClusterMind.pareto_declarative_hierarchical_clustering $INPUT_LOG $RESULTS_FOLDER"/" $PARETO_SPLIT_THRESHOLD "Janus.jar" $SIMPLIFICATION_FLAG $MIN_LEAF_SIZE
+python3 -m ClusterMind.pareto_declarative_hierarchical_clustering --ignore-gooey -i $INPUT_LOG -o $RESULTS_FOLDER -t $PARETO_SPLIT_THRESHOLD -j "Janus.jar" $SIMPLIFICATION_FLAG -l $MIN_LEAF_SIZE
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
@@ -151,3 +157,5 @@ python3 -m DeclareTrees.decision_trees_for_clusters \
   "$RESULTS_FOLDER"/decision_tree.dot \
   1 \
   ${SPLIT_POLICY}
+
+deactivate
