@@ -1,12 +1,10 @@
-# import sklearn.cluster as clustering
+import os
 import sys
 import csv
 from collections import Counter
 import datetime
 
 # import ClusterMind.IO.SJ2T_import as cmio
-from sklearn.metrics import silhouette_score, silhouette_samples
-
 import ClusterMind.IO.J3Tree_import as j3io
 
 import pm4py as pm
@@ -32,11 +30,15 @@ from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 from scipy.cluster.hierarchy import dendrogram
 from scipy.cluster import hierarchy
+from sklearn.metrics import silhouette_score, silhouette_samples
 
 import plotly.express as px
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
-import seaborn as sns
+
+from gooey import Gooey
+from gooey import GooeyParser
+import wx
 
 
 def block_diag_einsum(arr, num):
@@ -302,7 +304,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     constraints = input3D.shape[1]
     measures = input3D.shape[2]
 
-    clusters = cluster_traces(input2D, apply_pca_flag, constraints, measures, algorithm)
+    clusters = cluster_traces(input2D, apply_pca, constraints, measures, algorithm)
 
     return clusters, pca, input2D
 
@@ -349,16 +351,17 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
     # load log
     log = pm.read_xes(log_file_path)
     logs = split_log_according_to_clusters(log, clusters)
-    # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
-    export_traces_labels_multi_perspective(log, clusters,
-                                           output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    # export_traces_labels(log, clusters, os.path.join(output_folder, log.attributes['concept:name'] + '_traces-labels.csv' ) )
+    export_traces_labels_multi_perspective(log, clusters, os.path.join(output_folder,
+                                                                       f"{log.attributes['concept:name']}_traces-labels.csv")
+                                           )
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
-                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
-                               cluster_index) + '.xes')
+                           os.path.join(output_folder,
+                                        f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
     # retrieve and output stats
-    with open(output_folder + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
+    with open(os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"), 'w') as output:
         csv_out = csv.writer(output, delimiter=';')
         csv_out.writerow([
             'CLUSTER_NUM',
@@ -494,16 +497,16 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
     log = pm.read_xes(log_file_path)
     all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
     logs = split_log_according_to_clusters(log, clusters)
-    # export_traces_labels(log, clusters, output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+    # export_traces_labels(log, clusters, os.path.join(output_folder, log.attributes['concept:name'] + '_traces-labels.csv'))
     export_traces_labels_multi_perspective(log, clusters,
-                                           output_folder + log.attributes['concept:name'] + '_traces-labels.csv')
+                                           os.path.join(output_folder,
+                                                        f"{log.attributes['concept:name']}_traces-labels.csv"))
     # export clusters logs to disk
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
-                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
-                               cluster_index) + '.xes')
+                           os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
     # retrieve and output stats
-    with open(output_folder + log.attributes['concept:name'] + '_clusters-stats.csv', 'w') as output:
+    with open(os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"), 'w') as output:
         csv_out = csv.writer(output, delimiter=';')
         csv_out.writerow([
                              'CLUSTER_NUM',
@@ -651,7 +654,7 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures_num, cons
                 else:
                     res_matrix[centroid_index] += [0]
         # export to csv
-        with open(output_folder + '/centroids-constraints.csv', 'w') as output:
+        with open(os.path.join(output_folder, 'centroids-constraints.csv'), 'w') as output:
             csv_output = csv.writer(output, delimiter=';')
             # header
             csv_output.writerow(constraints_names)
@@ -663,7 +666,7 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures_num, cons
 
 def visualize_pca_relevant_constraints(clusters, pca, measures_num, constraints_names, output_folder):
     print(">>>>>visualize PCA selected constraints")
-    with open(output_folder + '/pca-features.csv', 'w') as output:
+    with open(os.path.join(output_folder, 'pca-features.csv'), 'w') as output:
         constraint_measures_names = [c + "_m" + str(m) for c in constraints_names for m in range(measures_num)]
         n_pcs = pca.components_.shape[0]
         pca_features = pd.DataFrame(pca.components_, columns=constraint_measures_names)
@@ -686,7 +689,7 @@ def visualize_pca_relevant_constraints(clusters, pca, measures_num, constraints_
 
 def visualize_pca_relevant_feature(pca, feature_names, output_folder):
     print(">>>>>visualize PCA selected features")
-    with open(output_folder + '/pca-features.csv', 'w') as output:
+    with open(os.path.join(output_folder, 'pca-features.csv'), 'w') as output:
         n_pcs = pca.components_.shape[0]
         pca_features = pd.DataFrame(pca.components_, columns=feature_names)
         # Print all features importance
@@ -782,15 +785,20 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
                                                                       clustering_algorithm,
                                                                       boolean_confidence, apply_pca_flag)
 
-    clustering_postprocessing_and_visualization(input2D, clusters, measures_num, constraints_names, visualization_flag,
+    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+                                                constraints_names, visualization_flag,
                                                 apply_pca_flag, pca)
 
 
-def clustering_postprocessing_and_visualization(input2D, clusters, measures_num, features_names, visualization_flag,
+def clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+                                                features_names, visualization_flag,
                                                 apply_pca_flag, pca):
     """
-Retrieve and axport cluster statistics and visualization if enabled
-    :param visualization_flag: 
+Retrieve and export cluster statistics and visualization if enabled
+
+    :param output_folder:
+    :param log_file_path:
+    :param visualization_flag:
     :param input2D: 
     :param clusters: 
     :param measures_num: 
@@ -902,8 +910,24 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     print("Clustering...")
     clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm)
 
-    clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
+    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+                                                visualization_flag,
                                                 apply_pca_flag, pca)
+
+
+def select_attribute_window(options_list):
+    """
+Open a WX window to select from the available attributes of the event log
+    :rtype: object
+    """
+    dlg = wx.SingleChoiceDialog(None,
+                                caption='Select attribute',
+                                message="Select the desired attribute upon which basing the clustering of the log"'Select attribute',
+                                choices=options_list)
+    # dlg = wx.MessageDialog(None, 'App Title', style=wx.CB_READONLY)
+    dlg.ShowModal()
+
+    return dlg.GetStringSelection()
 
 
 def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag):
@@ -923,10 +947,12 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     # Get attribute to use
     while True:
         try:
+            app = wx.App()
             print([f"{i},{e}" for i, e in enumerate(feature_names)])
-            selected_attribute_index = int(input("Select feature index: "))
-            feature_name = feature_names[selected_attribute_index]
-            print("Selected feature: ", feature_name)
+            # selected_attribute_index = int(input("Select feature index: "))
+            # feature_name = feature_names[selected_attribute_index]
+            feature_name = select_attribute_window(feature_names)
+            print(f"Selected feature: {feature_name}")
             break
         except ValueError:
             print("This is not a valid number, try again.")
@@ -952,7 +978,8 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     print("Clustering...")
     clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm)
 
-    clustering_postprocessing_and_visualization(input2D, clusters, 0, feature_names, visualization_flag,
+    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+                                                visualization_flag,
                                                 False, None)
 
 
@@ -1014,12 +1041,94 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print("Features: " + str(features_num))
     clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm)
 
-    clustering_postprocessing_and_visualization(input2D, clusters, measures_num, constraints_names, visualization_flag,
+    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+                                                constraints_names, visualization_flag,
                                                 apply_pca_flag, pca)
 
 
-if __name__ == '__main__':
-    clustering_policy = sys.argv[1]
+@Gooey
+def main():
+    """
+Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
+    """
+    # Common parameters among clusterings
+    parent_parser = GooeyParser(add_help=False)
+    parent_parser.add_argument('-iL', '--log-file-path',
+                               help='Path to input Event Log File',
+                               type=str, widget='FileChooser', required=True)
+    parent_parser.add_argument('-a', '--clustering-algorithm',
+                               help='Algorithm with which clustering the featured traces',
+                               type=str, widget='Dropdown',
+                               choices=['kmeans',
+                                        'affinity',
+                                        'meanshift',
+                                        'agglomerative',
+                                        'spectral',
+                                        'dbscan',
+                                        'optics',
+                                        'birch'],
+                               default='optics')
+    parent_parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
+                               widget='DirChooser', required=True)
+    parent_parser.add_argument('-vf', '--visualization-flag',
+                               help='Flag to enable the visualization features (CPU heavy): 3D tSNE, ...',
+                               action="store_true", widget='BlockCheckbox')
+
+    parser = GooeyParser(description="Behavioural trace clustering based on declarative rules.")
+    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
+    parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
+                        gooey_options={'visible': False})
+    subparsers = parser.add_subparsers(help='Available clustering policies', dest='clustering_policy')
+    subparsers.required = True
+
+    # RULES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_rules = subparsers.add_parser("rules",
+                                         description="clustering based on rules",
+                                         help="clustering based on rules", parents=[parent_parser])
+    parser_rules.add_argument('-pca', '--apply-pca-flag',
+                              help='Flag to enable features reduction through PCA',
+                              action="store_true", widget='BlockCheckbox')
+    parser_rules.add_argument('-tm', '--trace-measures-csv-file_path',
+                              help='Path to the Janus trace measures CSV output',
+                              type=str, widget='FileChooser', required=True)
+    parser_rules.add_argument('-b', '--boolean-confidence',
+                              help='Flag to consider the rules true/false if not enough compliant on a trace or to keep the specific measurements',
+                              action="store_true", widget='BlockCheckbox')
+
+    # ATTRIBUTES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_attributes = subparsers.add_parser("attributes",
+                                              description="clustering based on all event log attributes",
+                                              help="clustering based on all event log attributes",
+                                              parents=[parent_parser])
+    parser_attributes.add_argument('-pca', '--apply-pca-flag',
+                                   help='Flag to enable features reduction through PCA',
+                                   action="store_true", widget='BlockCheckbox')
+
+    # SPECIFIC ATTRIBUTE PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_specific_attribute = subparsers.add_parser("specific-attribute",
+                                                      description="clustering based on one event log attribute",
+                                                      help="clustering based on one event log attribute",
+                                                      parents=[parent_parser])
+
+    # MIXED PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_mixed = subparsers.add_parser("mixed",
+                                         description="clustering based on rules and attributes",
+                                         help="clustering based on rules and attributes", parents=[parent_parser])
+    parser_mixed.add_argument('-pca', '--apply-pca-flag',
+                              help='Flag to enable features reduction through PCA',
+                              action="store_true", widget='BlockCheckbox')
+    parser_mixed.add_argument('-tm', '--trace-measures-csv-file_path',
+                              help='Path to the Janus trace measures CSV output',
+                              type=str, widget='FileChooser', required=True)
+    parser_mixed.add_argument('-b', '--boolean-confidence',
+                              help='Flag to consider the rules true/false if not enough compliant on a trace or to keep the specific measurements',
+                              action="store_true", widget='BlockCheckbox')
+
+    args = parser.parse_args()
+
+    print(args)
+    # clustering_policy = sys.argv[1]
+    clustering_policy = args.clustering_policy
     print("Clustering policy: " + str(clustering_policy))
     # 'rules'
     # 'attributes'
@@ -1029,55 +1138,71 @@ if __name__ == '__main__':
         # if len(sys.argv) != 9:
         #     print(f"ERROR: wrong number of arguments for {clustering_policy}-based clustering")
         # BEHAVIOURAL CLUSTERING
-        log_file_path = sys.argv[2]
-        clustering_algorithm = sys.argv[3]
-        output_folder = sys.argv[4]
-        visualization_flag = sys.argv[5] == "True"
-        apply_pca_flag = sys.argv[6] == "True"
-        trace_measures_csv_file_path = sys.argv[7]
-        boolean_confidence = sys.argv[8] == "True"
+        # log_file_path = sys.argv[2]
+        # clustering_algorithm = sys.argv[3]
+        # output_folder = sys.argv[4]
+        # visualization_flag = sys.argv[5] == "True"
+        # apply_pca_flag = sys.argv[6] == "True"
+        # trace_measures_csv_file_path = sys.argv[7]
+        # boolean_confidence = sys.argv[8] == "True"
 
-        behavioural_clustering(trace_measures_csv_file_path,
-                               log_file_path,
-                               clustering_algorithm,
-                               boolean_confidence,
-                               output_folder,
-                               visualization_flag, apply_pca_flag)
+        behavioural_clustering(args.trace_measures_csv_file_path,
+                               args.log_file_path,
+                               args.clustering_algorithm,
+                               args.boolean_confidence,
+                               args.output_folder,
+                               args.visualization_flag,
+                               args.apply_pca_flag)
+
     elif clustering_policy == 'attributes':
         # if len(sys.argv) != 7:
         #     print(f"ERROR: wrong number of arguments for {clustering_policy}-based clustering")
         # ATTRIBUTE CLUSTERING
-        log_file_path = sys.argv[2]
-        clustering_algorithm = sys.argv[3]
-        output_folder = sys.argv[4]
-        visualization_flag = sys.argv[5] == "True"
-        apply_pca_flag = sys.argv[6] == "True"
+        # log_file_path = sys.argv[2]
+        # clustering_algorithm = sys.argv[3]
+        # output_folder = sys.argv[4]
+        # visualization_flag = sys.argv[5] == "True"
+        # apply_pca_flag = sys.argv[6] == "True"
 
-        attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca_flag)
+        attribute_clustering(args.log_file_path,
+                             args.clustering_algorithm,
+                             args.output_folder,
+                             args.visualization_flag,
+                             args.apply_pca_flag)
 
     elif clustering_policy == 'specific-attribute':
         # SPECIFIC attribute CLUSTERING
-        log_file_path = sys.argv[2]
-        clustering_algorithm = sys.argv[3]
-        output_folder = sys.argv[4]
-        visualization_flag = sys.argv[5] == "True"
+        # log_file_path = sys.argv[2]
+        # clustering_algorithm = sys.argv[3]
+        # output_folder = sys.argv[4]
+        # visualization_flag = sys.argv[5] == "True"
 
-        specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag)
+        specific_attribute_clustering(args.log_file_path,
+                                      args.clustering_algorithm,
+                                      args.output_folder,
+                                      args.visualization_flag)
 
     elif clustering_policy == 'mixed':
         # if len(sys.argv) != 9:
         #     print(f"ERROR: wrong number of arguments for {clustering_policy}-based clustering")
         # mixed rules-attributes CLUSTERING
-        log_file_path = sys.argv[2]
-        clustering_algorithm = sys.argv[3]
-        output_folder = sys.argv[4]
-        visualization_flag = sys.argv[5] == "True"
-        apply_pca_flag = sys.argv[6] == "True"
-        trace_measures_csv_file_path = sys.argv[7]
-        boolean_confidence = sys.argv[8] == "True"
+        # log_file_path = sys.argv[2]
+        # clustering_algorithm = sys.argv[3]
+        # output_folder = sys.argv[4]
+        # visualization_flag = sys.argv[5] == "True"
+        # apply_pca_flag = sys.argv[6] == "True"
+        # trace_measures_csv_file_path = sys.argv[7]
+        # boolean_confidence = sys.argv[8] == "True"
 
-        mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
-                         output_folder,
-                         visualization_flag, apply_pca_flag)
+        mixed_clustering(args.trace_measures_csv_file_path,
+                         args.log_file_path,
+                         args.clustering_algorithm,
+                         args.boolean_confidence,
+                         args.output_folder,
+                         args.visualization_flag,
+                         args.apply_pca_flag)
     else:
         print("Clustering policy not recognized: " + str(clustering_policy))
+
+if __name__ == '__main__':
+    main()

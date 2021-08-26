@@ -394,7 +394,7 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         description="Hierarchical clustering of a log according to its compliance to a declarative model.")
     parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
 
-    parser.add_argument('-i', '--input-log', help='Path to input Event Log File', type=str, widget='FileChooser')
+    parser.add_argument('-iL', '--input-log', help='Path to input Event Log File', type=str, widget='FileChooser')
     parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
                         widget='DirChooser')
     parser.add_argument('-t', '--split-threshold', help='Measure threshold where to split the clusters', type=float,
@@ -404,11 +404,11 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     parser.add_argument('-s', '--simplification-flag',
                         help='Flag to enable the simplification of the models at each step',
                         action="store_true", widget='BlockCheckbox')
-    parser.add_argument('-l', '--min-leaf-size',
+    parser.add_argument('-min', '--min-leaf-size',
                         help='Minimum size of the leaves/clusters below which the recursion is stopped', type=int,
                         widget='IntegerField')
-    parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
-                        gooey_options={'visible': False})
+    # parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
+    #                     gooey_options={'visible': False})
 
     args = parser.parse_args()
     print(args)
