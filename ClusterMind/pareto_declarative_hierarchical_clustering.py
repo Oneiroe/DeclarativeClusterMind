@@ -1,10 +1,6 @@
 import os
-import sys
 import subprocess
 import csv
-import argparse
-from gooey import Gooey
-from gooey import GooeyParser
 
 from random import random
 import graphviz
@@ -12,17 +8,15 @@ import graphviz
 import ClusterMind.IO.J3Tree_import as j3io
 import ClusterMind.utils.aggregate_clusters_measures
 import ClusterMind.utils.split_log_according_to_declare_model as splitter
+from ClusterMind.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
 
 import pm4py as pm
-from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.algo.filtering.log.attributes import attributes_filter
 import pm4py.statistics.traces.log as stats
 
-from ClusterMind.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
-
-from sklearn.metrics import silhouette_score, silhouette_samples
+# from sklearn.metrics import silhouette_score, silhouette_samples
 
 JANUS_JAR_PATH_GLOBAL = ""
 SIMPLIFICATION_FLAG = False
@@ -165,9 +159,10 @@ Lauch Janus command line to retrieve a declarative model for a specific log
 def measure_declarative_model(log_path, model_path, output, measure):
     """
 Lauch Janus command line to retrieve a declarative model measures for a specific log
-    :param log: path to the input event log
-    :param model: path to the input Json model
-    :param output_folder:
+    :param log_path: path to the input event log
+    :param model_path: path to the input Json model
+    :param output:
+    :param measure:
     """
     command = JANUS_MEASUREMENT_COMMAND_LINE(JANUS_JAR_PATH_GLOBAL, log_path, model_path, output, measure)
     print(command)
@@ -316,7 +311,7 @@ def export_cluster_statistics_multi_perspective(input_log, clusters_leaves, outp
     print(f"average F1: {f1_avg / len(clusters_leaves)}")
 
 
-def pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold=0.8, min_leaf_size=0):
+def pareto_declarative_hierarchical_clustering(input_log, output_folder, janus_jar_path_global, simplification_flag, split_threshold=0.8, min_leaf_size=0 ):
     """
 Cluster the log according recursively through declarative models:
 at each step a declarative model is discovered and
@@ -329,6 +324,9 @@ The recursion ends is:
     :param split_threshold: threshold of the described behaviour by the model
     :param min_leaf_size: minimum number of trace for a cluster
     """
+    global JANUS_JAR_PATH_GLOBAL, SIMPLIFICATION_FLAG
+    JANUS_JAR_PATH_GLOBAL = janus_jar_path_global
+    SIMPLIFICATION_FLAG = simplification_flag
     # pre-phase
     # original_log = xes_importer.apply(input_log)
     root = ClusterNode(input_log, split_threshold)
@@ -374,61 +372,5 @@ The recursion ends is:
     # print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
     # ClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
 
-
-# python -m ClusterMind.pareto_declarative_hierarchical_clustering \
-#     -i experiments/PARETO-SPLIT/00-INPUT-LOGS-MODELS/SEPSIS-log.xes \
-#     -o experiments/PARETO-SPLIT/SEPSIS/pure-output/ \
-#     -t 0.95 \
-#     -j /home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/Janus.jar \
-#     -s False \
-#     -m 5
-
-@Gooey
-def main():
-    """
-
-Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
-    """
-    # CLI/GUI PARSER #####
-    parser = GooeyParser(
-        description="Hierarchical clustering of a log according to its compliance to a declarative model.")
-    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
-
-    parser.add_argument('-iL', '--input-log', help='Path to input Event Log File', type=str, widget='FileChooser')
-    parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
-                        widget='DirChooser')
-    parser.add_argument('-t', '--split-threshold', help='Measure threshold where to split the clusters', type=float,
-                        widget='DecimalField', default=0.95, gooey_options={'min': 0.0, 'max': 1.0})
-    parser.add_argument('-j', '--janus-jar-path-global', help='Path to Janus JAR executable', type=str,
-                        widget='FileChooser')
-    parser.add_argument('-s', '--simplification-flag',
-                        help='Flag to enable the simplification of the models at each step',
-                        action="store_true", widget='BlockCheckbox')
-    parser.add_argument('-min', '--min-leaf-size',
-                        help='Minimum size of the leaves/clusters below which the recursion is stopped', type=int,
-                        widget='IntegerField')
-    # parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
-    #                     gooey_options={'visible': False})
-
-    args = parser.parse_args()
-    print(args)
-    input_log = args.input_log
-    output_folder = args.output_folder
-    split_threshold = args.split_threshold
-    global JANUS_JAR_PATH_GLOBAL, SIMPLIFICATION_FLAG
-    JANUS_JAR_PATH_GLOBAL = args.janus_jar_path_global
-    SIMPLIFICATION_FLAG = args.simplification_flag
-    min_leaf_size = args.min_leaf_size
-
-    pareto_declarative_hierarchical_clustering(input_log, output_folder, split_threshold, min_leaf_size)
-
-
 if __name__ == '__main__':
-    # print(sys.argv)
-    # INPUT_LOG = sys.argv[1]
-    # OUTPUT_FOLDER = sys.argv[2]
-    # SPLIT_THRESHOLD = float(sys.argv[3])
-    # JANUS_JAR_PATH_GLOBAL = sys.argv[4]
-    # SIMPLIFICATION_FLAG = sys.argv[5] == "True"
-    # MIN_LEAF_SIZE = int(sys.argv[6])
-    main()
+    print("Use ClusterMind.ui.py to launch the script via CLI/GUI ")
