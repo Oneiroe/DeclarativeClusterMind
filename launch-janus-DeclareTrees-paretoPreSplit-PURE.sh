@@ -144,7 +144,7 @@ fi
 # PARETO 80:20 split of the log according to the model
 echo "################################ PARETO PRE-SPLIT"
 #python3 -m ClusterMind.utils.split_log_according_to_declare_model $INPUT_LOG $OUTPUT_TRACE_MEASURES_CSV $SPLIT_THRESHOLD $LOG_80_FIT $LOG_20_DIVERGENT
-python3 -m ClusterMind.pareto_declarative_hierarchical_clustering --ignore-gooey -i $INPUT_LOG -o $RESULTS_FOLDER -t $PARETO_SPLIT_THRESHOLD -j "Janus.jar" $SIMPLIFICATION_FLAG -l $MIN_LEAF_SIZE
+python3 -m ClusterMind.ui --ignore-gooey pareto -iL $INPUT_LOG -o $RESULTS_FOLDER -t $PARETO_SPLIT_THRESHOLD -j "Janus.jar" $SIMPLIFICATION_FLAG -min $MIN_LEAF_SIZE
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"

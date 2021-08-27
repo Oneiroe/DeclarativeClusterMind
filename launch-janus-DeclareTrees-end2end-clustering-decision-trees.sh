@@ -56,9 +56,15 @@ CLUSTERING_ALGORITHM="optics"
 #        'optics',  # 6
 #        'birch',  # 7
 #        'gaussian',  # 8 DO NOT USE THIS!
-BOOLEAN_RULES="True"
-VISUALIZATION_FLAG="True"
-APPLY_PCA_FLAG="True"
+#BOOLEAN_RULES="True"
+BOOLEAN_RULES="-b"
+#BOOLEAN_RULES=""
+#VISUALIZATION_FLAG="True"
+VISUALIZATION_FLAG="-vf"
+#VISUALIZATION_FLAG=""
+#APPLY_PCA_FLAG="True"
+APPLY_PCA_FLAG="-pca"
+#APPLY_PCA_FLAG=""
 
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
@@ -80,7 +86,7 @@ LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.80
+CONFIDENCE=0.95
 MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
@@ -128,7 +134,7 @@ fi
 
 # Launch clustering
 echo "################################ CLUSTERING"
-python3 -m ClusterMind.cm_clustering $CLUSTERING_POLICY $INPUT_LOG $CLUSTERING_ALGORITHM $PROCESSED_DATA_FOLDER"/" $VISUALIZATION_FLAG $APPLY_PCA_FLAG "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -148,7 +154,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 done
 
 # merge results
-python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER"/" "-output[logMeasures].csv" "aggregated_result.csv"
+python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
 
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
