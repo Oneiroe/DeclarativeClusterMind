@@ -1,17 +1,11 @@
 import csv
 import math
-import os
-import sys
 from random import random
-import graphviz
-import pydot
-import ClusterMind.IO.SJ2T_import as cmio
 import ClusterMind.IO.J3Tree_import as j3tio
 
 from pm4py.objects.log.obj import EventLog
 import pm4py as pm
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
-import pm4py.statistics.traces.log as stats
 
 from sklearn import tree
 import numpy as np
@@ -22,17 +16,21 @@ class ClusterNode:
     def __init__(self, constraint=None, threshold=0.8):
         self.ok = None  # child node fulfilling the constraint
         self.nok = None  # child node not fulfilling the constraint
+        self.nan = None  # child node not violating but also not activating the constraint
         self.constraint = constraint  # Constraint discriminating the current node
         self.threshold = threshold  # Constraint threshold discriminating the current node
         self.clusters = set()  # Set of cluster at the current node
         self.used_constraints = set()  #
 
     def insert_child(self, cluster_name, value):
-        if value >= self.threshold:
+        if math.isnan(value):
+            if not self.nan:
+                self.nan = ClusterNode(threshold=self.threshold)
+            self.nan.clusters.add(cluster_name)
+        elif value >= self.threshold:
             if not self.ok:
                 self.ok = ClusterNode(threshold=self.threshold)
             self.ok.clusters.add(cluster_name)
-
         else:
             if not self.nok:
                 self.nok = ClusterNode(threshold=self.threshold)
@@ -49,6 +47,9 @@ class ClusterNode:
             print('\t', end="")
             self.ok.print_tree_dfs()
         self.print_node()
+        if self.nan:
+            print('\t', end="")
+            self.nan.print_tree_dfs()
         if self.nok:
             print('\t', end="")
             self.nok.print_tree_dfs()
@@ -58,6 +59,9 @@ class ClusterNode:
         if self.ok:
             # print('\t', end="")
             self.ok.print_tree_bfs()
+        if self.nan:
+            print('\t', end="")
+            self.nan.print_tree_dfs()
         if self.nok:
             # print('\t', end="")
             self.nok.print_tree_bfs()
@@ -79,6 +83,9 @@ def print_tree_graphviz(graph, node):
     if node.ok:
         next_left = print_tree_graphviz(graph, node.ok)
         graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
+    if node.nan:
+        next_center = print_tree_graphviz(graph, node.nan)
+        graph.edge(this_node_code, next_center, label="NA [" + str(len(node.nan.clusters)) + "]", color="gray")
     if node.nok:
         next_right = print_tree_graphviz(graph, node.nok)
         graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
@@ -93,11 +100,15 @@ def minimize_tree(node):
     new_node = node
     if node.ok:
         new_node.ok = minimize_tree(node.ok)
+    if node.nan:
+        new_node.nan = minimize_tree(node.nan)
     if node.nok:
         new_node.nok = minimize_tree(node.nok)
-    if node.ok and not node.nok:
+    if node.ok and not node.nan and not node.nok:
         return new_node.ok
-    if not node.ok and node.nok:
+    if not node.ok and node.nan and not node.nok:
+        return new_node.nan
+    if not node.ok and not node.nan and node.nok:
         return new_node.nok
     return new_node
 
@@ -166,6 +177,8 @@ Constraints are used in total frequency order from the most common among the clu
                 leaf.insert_child(cluster_in_node, clusters_map[cluster_in_node][constraint])
                 if leaf.ok:
                     new_leaves.add(leaf.ok)
+                if leaf.nan:
+                    new_leaves.add(leaf.nan)
                 if leaf.nok:
                     new_leaves.add(leaf.nok)
         leaves = new_leaves
@@ -208,10 +221,12 @@ def get_clusters_table(clusters_file):
                     if math.isnan(float(i)):
                         # row += [float(0)]  # consider vacuous satisfaction as a violation
                         # continue  # equal to +=0
-                        row += [float(1)]
+                        # row += [float(1)]
+                        row += [float(i)]
                         sum_temp += float(1)
                         # it is a vacuous satisfaction, but see atMostOne problem for the consequences of skipping it
                         # e.g. atMostOne(a) was used to distinguish clusters with a and cluster without it
+                        # thus we keep the NaN and split each level in fulfilled, violated, and not activated
                     else:
                         row += [float(i)]
                         sum_temp += float(i)
@@ -295,6 +310,10 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                 leaf.ok.used_constraints = leaf.used_constraints.copy()
                 leaf.ok.used_constraints.add(leaf.constraint)
                 new_leaves.add(leaf.ok)
+            if leaf.nan:
+                leaf.nan.used_constraints = leaf.used_constraints.copy()
+                leaf.nan.used_constraints.add(leaf.constraint)
+                new_leaves.add(leaf.nan)
             if leaf.nok:
                 leaf.nok.used_constraints = leaf.used_constraints.copy()
                 leaf.nok.used_constraints.add(leaf.constraint)
