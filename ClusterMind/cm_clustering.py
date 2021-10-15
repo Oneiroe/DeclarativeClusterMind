@@ -170,7 +170,7 @@ Cluster the traces according to the selected algorithm
         return None
 
 
-def visualize_matrices(input2D, clusters):
+def visualize_heatmap(input2D, clusters):
     print(">>>> Visualize heatmap of MMM")
     try:
         centorids = clusters.cluster_centers_
@@ -472,7 +472,7 @@ def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
     return result
 
 
-def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder):
+def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder, compute_f1=True):
     """
      retrieve the statistics of the performances and attributes of the sub-logs of each clusters.
      Specifically, it retrieves for each cluster:
@@ -486,6 +486,9 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
         - numerical attributes: max, min, avg
         - categorical attributes: number of values, list of all values in cluster
 
+    TODO expose compute_f1 in input
+
+    :param compute_f1: flag to compute or not the imperative fitness, precision, and F1 scors
     :param clusters:
     :param log_file_path:
     :param output_folder:
@@ -503,24 +506,25 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
     for cluster_index in logs:
         xes_exporter.apply(logs[cluster_index],
                            os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
+    header = ['CLUSTER_NUM',
+              'TRACES',
+              'TRACE-LEN-AVG',
+              'TRACE-LEN-MIN',
+              'TRACE-LEN-MAX',
+              'DURATION-MEDIAN',
+              'DURATION-MIN',
+              'DURATION-MAX',
+              'CASE-ARRIVAL-AVG',
+              'TASKS-NUM',
+              'TASKS']
+    if compute_f1:
+        header += ['FITNESS', 'PRECISION', 'F1']
+    header += all_events_attributes
+
     # retrieve and output stats
     with open(os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"), 'w') as output:
         csv_out = csv.writer(output, delimiter=';')
-        csv_out.writerow([
-                             'CLUSTER_NUM',
-                             'TRACES',
-                             'TRACE-LEN-AVG',
-                             'TRACE-LEN-MIN',
-                             'TRACE-LEN-MAX',
-                             'DURATION-MEDIAN',
-                             'DURATION-MIN',
-                             'DURATION-MAX',
-                             'CASE-ARRIVAL-AVG',
-                             'TASKS-NUM',
-                             'TASKS',
-                             'FITNESS', 'PRECISION', 'F1'
-                         ] + all_events_attributes
-                         )
+        csv_out.writerow(header)
         f1_avg = 0
         for cluster_index in logs:
             current_s_log = logs[cluster_index]
@@ -535,34 +539,39 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
             duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
             case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
 
-            # F1 fitness et all
-            # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
-            petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log)
-            # FITNESS
-            # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
-            fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
-                                                                  final_marking)
-            # fitness = fitness_align_dictio['averageFitness']
-            fitness = fitness_replay_dictio['log_fitness']
-            # PRECISION:alignment vs token replay
-            # precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
-            precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
-            f1 = 2 * (precision * fitness) / (precision + fitness)
-            # print(fitness_align_dictio)
-            # print(f"Fitness: {fitness}")
-            # print(f"Precision: {prec_align}")
-            # print(f"F1: {f1}")
-            f1_avg += f1
+            if compute_f1:
+                # F1 fitness et all
+                # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
+                petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
+                # FITNESS
+                # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
+                fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
+                                                                      final_marking)
+                # fitness = fitness_align_dictio['averageFitness']
+                fitness = fitness_replay_dictio['log_fitness']
+                # PRECISION:alignment vs token replay
+                # precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
+                precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
+                f1 = 2 * (precision * fitness) / (precision + fitness)
+                # print(fitness_align_dictio)
+                # print(f"Fitness: {fitness}")
+                # print(f"Precision: {prec_align}")
+                # print(f"F1: {f1}")
+                f1_avg += f1
 
             # Attributes
             events_attributes = get_attributes_statistics_in_log(current_s_log, all_events_attributes)
 
-            csv_out.writerow(
-                [cluster_index, traces_num, events_avg, events_min, events_max,
-                 duration_median, duration_min, duration_max, case_arrival_avg,
-                 unique_tasks_num, unique_tasks, fitness, precision, f1] + events_attributes)
+            row_to_write = [cluster_index, traces_num, events_avg, events_min, events_max,
+                            duration_median, duration_min, duration_max, case_arrival_avg,
+                            unique_tasks_num, unique_tasks]
+            if compute_f1:
+                row_to_write += [fitness, precision, f1]
+            row_to_write += events_attributes
+            csv_out.writerow(row_to_write)
 
-    print(f"average F1: {f1_avg / len(logs)}")
+    if compute_f1:
+        print(f"average F1: {f1_avg / len(logs)}")
 
     return logs
 
@@ -825,7 +834,7 @@ Retrieve and export cluster statistics and visualization if enabled
         visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
 
         # plot_tSNE_3d(input2D, clusters)
-        # visualize_matrices(input2D, clusters)
+        # visualize_heatmap(input2D, clusters)
 
         # threshold = 0.95
         # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)

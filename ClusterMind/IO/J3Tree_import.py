@@ -280,7 +280,7 @@ def import_trace_measures_from_csv(input_file_path, traces_num, constraints_num,
     return result
 
 
-def import_boolean_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num, threshold=0.9):
+def import_boolean_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num, threshold=1.0):
     """
     Import the result from SJ2T csv containing only if a constraint is satisfied in a trace (conf>threshold).
     Performances note: Knowing the dimension of the matrix in advance make the process way more fast
@@ -314,7 +314,7 @@ def import_boolean_trace_measures_from_csv(input_file_path, traces_num, constrai
                 it += 1
 
             # result[it][ic] = np.nan_to_num(np.array(line[2:])) # in case NaN and +-inf is a problem
-            result[it][ic] = np.array(int(float(line[2]) > threshold))  # TODO WARNING when more measures are used
+            result[it][ic] = np.array(int(float(line[2]) >= threshold))  # TODO WARNING when more measures are used
             ic += 1
     print("3D shape:" + str(result.shape))
     return result

@@ -49,7 +49,7 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     parser_rules.add_argument('-pca', '--apply-pca-flag',
                               help='Flag to enable features reduction through PCA',
                               action="store_true", widget='BlockCheckbox')
-    parser_rules.add_argument('-tm', '--trace-measures-csv-file_path',
+    parser_rules.add_argument('-tm', '--trace-measures-csv-file-path',
                               help='Path to the Janus trace measures CSV output',
                               type=str, widget='FileChooser', required=True)
     parser_rules.add_argument('-b', '--boolean-confidence',
