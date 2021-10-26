@@ -34,6 +34,10 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     parent_parser.add_argument('-vf', '--visualization-flag',
                                help='Flag to enable the visualization features (CPU heavy): 3D tSNE, ...',
                                action="store_true", widget='BlockCheckbox')
+    parent_parser.add_argument('-nc', '--number-of-clusters',
+                               help='manuals setting of clusters number (for k-means like) or maximal number of clusters for non-parametrized ones (for density based)',
+                               type=int,
+                               widget='IntegerField', default=None)
 
     parser = GooeyParser(description="Behavioural trace clustering based on declarative rules.")
     parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
@@ -70,6 +74,15 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                                       description="clustering based on one event log attribute",
                                                       help="clustering based on one event log attribute",
                                                       parents=[parent_parser])
+
+    # ATTRIBUTES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_performances = subparsers.add_parser("performances",
+                                                description="clustering based on trace performances",
+                                                help="clustering based on trace performances",
+                                                parents=[parent_parser])
+    parser_performances.add_argument('-pca', '--apply-pca-flag',
+                                     help='Flag to enable features reduction through PCA',
+                                     action="store_true", widget='BlockCheckbox')
 
     # MIXED PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_mixed = subparsers.add_parser("mixed",
@@ -117,6 +130,7 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     # 'rules'
     # 'attributes'
     # 'specific-attribute'
+    # 'performances'
     # 'mixed'
     # 'pareto'
 
@@ -127,18 +141,28 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                              args.boolean_confidence,
                                              args.output_folder,
                                              args.visualization_flag,
-                                             args.apply_pca_flag)
+                                             args.apply_pca_flag,
+                                             args.number_of_clusters)
     elif clustering_policy == 'attributes':
         cm_clustering.attribute_clustering(args.log_file_path,
                                            args.clustering_algorithm,
                                            args.output_folder,
                                            args.visualization_flag,
-                                           args.apply_pca_flag)
+                                           args.apply_pca_flag,
+                                           args.number_of_clusters)
     elif clustering_policy == 'specific-attribute':
         cm_clustering.specific_attribute_clustering(args.log_file_path,
                                                     args.clustering_algorithm,
                                                     args.output_folder,
-                                                    args.visualization_flag)
+                                                    args.visualization_flag,
+                                                    args.number_of_clusters)
+    elif clustering_policy == 'performances':
+        cm_clustering.performances_clustering(args.log_file_path,
+                                              args.clustering_algorithm,
+                                              args.output_folder,
+                                              args.visualization_flag,
+                                              args.apply_pca_flag,
+                                              args.number_of_clusters)
     elif clustering_policy == 'mixed':
         cm_clustering.mixed_clustering(args.trace_measures_csv_file_path,
                                        args.log_file_path,
@@ -146,7 +170,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                        args.boolean_confidence,
                                        args.output_folder,
                                        args.visualization_flag,
-                                       args.apply_pca_flag)
+                                       args.apply_pca_flag,
+                                       args.number_of_clusters)
     elif clustering_policy == 'pareto':
         pareto_clustering.pareto_declarative_hierarchical_clustering(args.input_log,
                                                                      args.output_folder,

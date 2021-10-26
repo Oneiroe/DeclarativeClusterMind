@@ -11,16 +11,16 @@ import pm4py as pm
 from pm4py.objects.log.obj import EventLog
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.objects.log.importer.xes import importer as xes_importer
-import pm4py.statistics.traces.log as stats
 from pm4py.objects.log.util import get_log_representation
 from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
-from pm4py.visualization.petrinet import visualizer as pn_visualizer
+from pm4py.visualization.petri_net import visualizer as pn_visualizer
 from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
 from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
 from pm4py.visualization.dfg import visualizer as dfg_visualization
+import pm4py.statistics.traces.generic.log as stats
 
 import pandas as pd
 import numpy as np
@@ -66,9 +66,10 @@ def initialize_centroids(measures_num, centroids_num):
     return block_diag_einsum(a, centroids_num)
 
 
-def cluster_traces(input2D, apply_pca_flag, features, measures, algorithm):
+def cluster_traces(input2D, apply_pca_flag, features, measures, algorithm, nc=None):
     """
 Cluster the traces according to the selected algorithm
+    :param nc:
     :param input2D:
     :param apply_pca_flag:
     :param features:
@@ -79,18 +80,19 @@ Cluster the traces according to the selected algorithm
     ## CLUSTERING
 
     #  number of clusters
-    nc = input2D.shape[1]  # number of features actually used
-    # nc = features  # total number of constraints
-    # nc = 10  # fixed number, for debugging
+    if nc is None or nc <= 1:
+        nc = input2D.shape[1]  # number of features actually used
+        # nc = features  # total number of constraints
+        # nc = 10  # fixed number, for debugging
 
-    if nc > len(input2D):
-        # when the number of clusters is greater than the number of traces algorithms like k-means trow exceptions
-        nc = len(input2D)
-    if nc == 1:
-        if apply_pca_flag:
-            nc = features
-        else:
-            nc = pd.DataFrame(input2D).nunique()[0]  # works only if PCA is not enabled
+        if nc > len(input2D):
+            # when the number of clusters is greater than the number of traces algorithms like k-means trow exceptions
+            nc = len(input2D)
+        if nc == 1:
+            if apply_pca_flag:
+                nc = features
+            else:
+                nc = pd.DataFrame(input2D).nunique()[0]  # works only if PCA is not enabled
 
     if (algorithm == 'kmeans'):
         # K-means
@@ -264,9 +266,10 @@ def plot_tSNE_3d(input2D, clusters):
 
 
 def cluster_traces_from_rules_trace_measures(trace_measures_file_path, algorithm='dbscan', boolean_confidence=True,
-                                             apply_pca=True):
+                                             apply_pca=True, number_of_clusters=0):
     """
 Cluster traces according to declarative rules measurements evaluated on them
+    :param number_of_clusters:
     :param trace_measures_file_path:
     :param algorithm:
     :param boolean_confidence:
@@ -302,7 +305,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     constraints = input3D.shape[1]
     measures = input3D.shape[2]
 
-    clusters = cluster_traces(input2D, apply_pca, constraints, measures, algorithm)
+    clusters = cluster_traces(input2D, apply_pca, constraints, measures, algorithm, number_of_clusters)
 
     return clusters, pca, input2D
 
@@ -371,6 +374,7 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
             'DURATION-MIN',
             'DURATION-MAX',
             'CASE-ARRIVAL-AVG',
+            'VARIANTS-NUM',
             'TASKS-NUM',
             'TASKS'
         ])
@@ -386,9 +390,10 @@ def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
             duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
             duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
             case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
+            variants_num = len(stats.case_statistics.get_variant_statistics(current_s_log))
             csv_out.writerow(
                 [cluster_index, traces_num, events_avg, events_min, events_max,
-                 duration_median, duration_min, duration_max, case_arrival_avg,
+                 duration_median, duration_min, duration_max, case_arrival_avg, variants_num,
                  unique_tasks_num, unique_tasks])
 
         return logs
@@ -472,7 +477,7 @@ def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
     return result
 
 
-def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder, compute_f1=True):
+def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder, compute_f1=False):
     """
      retrieve the statistics of the performances and attributes of the sub-logs of each clusters.
      Specifically, it retrieves for each cluster:
@@ -515,6 +520,7 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
               'DURATION-MIN',
               'DURATION-MAX',
               'CASE-ARRIVAL-AVG',
+              'VARIANTS-NUM',
               'TASKS-NUM',
               'TASKS']
     if compute_f1:
@@ -534,10 +540,11 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
             events_max = max(len(i) for i in current_s_log)
             unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
             unique_tasks_num = len(unique_tasks)
-            duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
-            duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
-            duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
+            duration_median = stats.case_statistics.get_median_case_duration(current_s_log)
+            duration_min = min(stats.case_statistics.get_all_case_durations(current_s_log))
+            duration_max = max(stats.case_statistics.get_all_case_durations(current_s_log))
             case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
+            variants_num = len(stats.case_statistics.get_variant_statistics(current_s_log))
 
             if compute_f1:
                 # F1 fitness et all
@@ -563,7 +570,7 @@ def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, outpu
             events_attributes = get_attributes_statistics_in_log(current_s_log, all_events_attributes)
 
             row_to_write = [cluster_index, traces_num, events_avg, events_min, events_max,
-                            duration_median, duration_min, duration_max, case_arrival_avg,
+                            duration_median, duration_min, duration_max, case_arrival_avg, variants_num,
                             unique_tasks_num, unique_tasks]
             if compute_f1:
                 row_to_write += [fitness, precision, f1]
@@ -769,10 +776,11 @@ Visualize the silhouette score of each cluster and trace
 
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
                            output_folder,
-                           visualization_flag, apply_pca_flag):
+                           visualization_flag, apply_pca_flag, number_of_clusters):
     """
     Cluster the traces of a log according to a set of declarative rules and their trace measurements
 
+    :param number_of_clusters:
     :param trace_measures_csv_file_path:
     :param log_file_path:
     :param clustering_algorithm:
@@ -790,7 +798,9 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
     # CLUSTERING
     clusters, pca, input2D = cluster_traces_from_rules_trace_measures(trace_measures_csv_file_path,
                                                                       clustering_algorithm,
-                                                                      boolean_confidence, apply_pca_flag)
+                                                                      boolean_confidence,
+                                                                      apply_pca_flag,
+                                                                      number_of_clusters)
 
     clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
                                                 constraints_names, visualization_flag,
@@ -876,7 +886,8 @@ def plot_dendrogram(model, **kwargs):
     plt.show()
 
 
-def attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca_flag):
+def attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca_flag,
+                         number_of_clusters):
     """
     Cluster the traces of a log according to the log categorical attributes
 
@@ -915,7 +926,63 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
+
+    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+                                                visualization_flag,
+                                                apply_pca_flag, pca)
+
+
+def performances_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca_flag,
+                            number_of_clusters):
+    """
+    Cluster the traces of a log according to their performances, i.e.,
+        - duration time
+        - trace length
+        - tasks number
+        - case-arrival (? how to use it?)
+
+    :param number_of_clusters:
+    :param log_file_path:
+    :param clustering_algorithm:
+    :param output_folder:
+    :param visualization_flag:
+    :param apply_pca_flag:
+    """
+
+    log = xes_importer.apply(log_file_path)
+
+    data = [trace[-1]['time:timestamp'] - trace[0]['time:timestamp'] for trace in log]
+    feature_names = ["duration"]
+
+    # 1-hot encoding
+    input2D = pd.DataFrame(data, columns=feature_names)
+
+    traces = input2D.shape[0]
+    attributes = input2D.shape[1]
+
+    print(clustering_algorithm)
+    print("Traces: " + str(traces))
+    print("Attributes: " + str(attributes))
+    print(feature_names)
+
+    # Clean NaN and infinity
+    input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(np.power(input2D, -10), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
+    # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
+
+    # reduce dimensions with PCA
+    # pca = None
+    pca_variance = 0.98
+    pca = PCA(pca_variance)
+    if apply_pca_flag:
+        pca.fit(input2D)
+        input2D = pca.transform(input2D)
+        print('Dimension of data PCA= ' + str(input2D.shape))
+
+    # CLUSTERING
+    print("Clustering...")
+    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
@@ -937,10 +1004,12 @@ Open a WX window to select from the available attributes of the event log
     return dlg.GetStringSelection()
 
 
-def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag):
+def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag,
+                                  number_of_clusters):
     """
     Cluster the traces of a log according to a single specific categorical attributes of the log (selected by user on input
 
+    :param number_of_clusters:
     :param log_file_path:
     :param clustering_algorithm:
     :param output_folder:
@@ -983,7 +1052,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
@@ -991,10 +1060,11 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
 
 
 def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
-                     output_folder, visualization_flag, apply_pca_flag):
+                     output_folder, visualization_flag, apply_pca_flag, number_of_clusters):
     """
     Cluster the traces of a log according to both a set of declarative rules and the log attributes
 
+    :param number_of_clusters:
     :param trace_measures_csv_file_path:
     :param log_file_path:
     :param clustering_algorithm:
@@ -1046,7 +1116,7 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print(clustering_algorithm)
     print("Traces: " + str(traces_num))
     print("Features: " + str(features_num))
-    clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm)
+    clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
                                                 constraints_names, visualization_flag,
@@ -1054,4 +1124,4 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
 
 
 if __name__ == '__main__':
-    print("Use ClusterMind.ui.py to launch the script via CLI/GUI ")
+    print("Use ClusterMind.ui.py to launch the script via CLI/GUI")

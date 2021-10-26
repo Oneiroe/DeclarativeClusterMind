@@ -15,16 +15,19 @@ JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 LOG_NAME="SEPSIS"
+# "BPIC12"
 # "BPIC13"
 # "SEPSIS"
 # "RTFMP"
 # "BPIC15_1f"
+# "BPIC15_f"
 # "BPIC17_f"
 
-CLUSTERING_POLICY="rules"
+CLUSTERING_POLICY="performances"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
+# 'performances'
 # 'mixed'
 SPLIT_POLICY="rules"
 # 'rules'
@@ -46,7 +49,7 @@ mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DAT
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="optics"
+CLUSTERING_ALGORITHM="kmeans"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -65,6 +68,7 @@ VISUALIZATION_FLAG="-vf"
 #APPLY_PCA_FLAG="True"
 APPLY_PCA_FLAG="-pca"
 #APPLY_PCA_FLAG=""
+CLUSTERS_NUMBER=20
 
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
@@ -86,11 +90,12 @@ LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.95
+CONFIDENCE=0.9
 MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ABSENCE].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ALL].json"
 MODEL_ENCODING="json"
 
 OUTPUT_CHECK_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
@@ -110,19 +115,19 @@ if test -f "${MODEL}"; then
   echo "$FILE already exists."
 else
   java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${MODEL}
-#  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
-fi
+  #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 
-# Simplify model, i.e., remove redundant constraints
-echo "################################ SIMPLIFICATION"
-#java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+  # Simplify model, i.e., remove redundant constraints
+  echo "################################ SIMPLIFICATION"
+  java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+fi
 
 # Retrieve measure
 echo "################################ MEASURE"
 if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
   echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
 else
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip -measure "Confidence"
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip -measure "Confidence" -detailsLevel trace
 #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
 # 'Lift','Confidence','Relative Risk'
 # 'Support','all','Compliance,'Added Value','J Measure'
@@ -134,7 +139,7 @@ fi
 
 # Launch clustering
 echo "################################ CLUSTERING"
-python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER #-tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -142,7 +147,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   echo $INPUT_LOG
   OUTPUT_CHECK_CSV="${INPUT_LOG}""-output.csv"
   OUTPUT_CHECK_JSON="${INPUT_LOG}""-output.json"
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence --no-screen-print-out
   #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
   #  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures

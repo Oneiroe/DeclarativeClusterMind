@@ -14,7 +14,7 @@ import pm4py as pm
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 from pm4py.algo.filtering.log.attributes import attributes_filter
-import pm4py.statistics.traces.log as stats
+import pm4py.statistics.traces.generic.log as stats
 
 # from sklearn.metrics import silhouette_score, silhouette_samples
 

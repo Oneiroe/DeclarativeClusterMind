@@ -5,6 +5,7 @@ import os
 from pm4py.objects.log.log import EventLog
 from pm4py.objects.log.importer.xes import importer as xes_importer
 from pm4py.objects.log.exporter.xes import exporter as xes_exporter
+import pm4py as pm
 
 
 @DeprecationWarning
@@ -47,17 +48,18 @@ Merge the input log into one unique xes event log
     :param logs_files_paths:
     """
     result_log = EventLog()
-    for log_file in logs_files_paths:
-        print(log_file)
-        log = xes_importer.apply(log_file)
-        result_log._attributes.update(log._attributes)
-        result_log._classifiers.update(log._classifiers)
-        result_log._extensions.update(log._extensions)
-        result_log._omni.update(log._omni)
+    for log_file in os.listdir(logs_files_paths):
+        if log_file.endswith("xes"):
+            print(log_file)
+            log = pm.read_xes(os.path.join(logs_files_paths, log_file))
+            result_log._attributes.update(log._attributes)
+            result_log._classifiers.update(log._classifiers)
+            result_log._extensions.update(log._extensions)
+            result_log._omni.update(log._omni)
 
-        for trace in log:
-            result_log.append(trace)
-    xes_exporter.apply(result_log, output_log_file_path)
+            for trace in log:
+                result_log.append(trace)
+    pm.write_xes(result_log, output_log_file_path)
 
 
 if __name__ == '__main__':
