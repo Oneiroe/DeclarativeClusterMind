@@ -5,6 +5,8 @@ from collections import Counter
 import datetime
 
 # import ClusterMind.IO.SJ2T_import as cmio
+
+
 import ClusterMind.IO.J3Tree_import as j3io
 
 import pm4py as pm
@@ -940,7 +942,6 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
         - duration time
         - trace length
         - tasks number
-        - case-arrival (? how to use it?)
 
     :param number_of_clusters:
     :param log_file_path:
@@ -952,9 +953,17 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
 
     log = xes_importer.apply(log_file_path)
 
-    data = [trace[-1]['time:timestamp'] - trace[0]['time:timestamp'] for trace in log]
-    feature_names = ["duration"]
-
+    # data = [[trace[-1]['time:timestamp'] - trace[0]['time:timestamp'], len(trace), len(set(e['concept:name'] for e in trace))] for trace in log]
+    data = [[
+        (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
+        len(trace),
+        len(set(e['concept:name'] for e in trace))
+    ] for trace in log]
+    feature_names = [
+        "case-duration",
+        "case-length",
+        "case-unique-tasks"
+    ]
     # 1-hot encoding
     input2D = pd.DataFrame(data, columns=feature_names)
 
