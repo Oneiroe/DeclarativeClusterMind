@@ -1,6 +1,6 @@
 from gooey import Gooey, GooeyParser
 
-from ClusteringEvaluation import f1_score
+from ClusteringEvaluation import f1_score, utils
 
 
 @Gooey(
@@ -53,7 +53,7 @@ def main():
     # 'silhouette'
 
     if metric == 'f1':
-        clusters_logs, indices_logs = f1_score.load_clusters_logs_from_folder(args.input_logs_folder)
+        clusters_logs, indices_logs = utils.load_clusters_logs_from_folder(args.input_logs_folder)
         f1_score.compute_f1(
             clusters_logs,
             indices_logs,

@@ -1,47 +1,29 @@
 import csv
-import os
 
 import pm4py as pm
+from matplotlib import pyplot as plt
+from sklearn.metrics import silhouette_score, silhouette_samples
+import utils
+import numpy as np
+import matplotlib.cm as cm
 
 
-def load_clusters_logs_from_folder(folder_path):
-    """
-    Given a folder, it loads all the contained .xes logs.
-    It is assumed the each logs belong to one cluster.
-
-    :param folder_path: path to the folder containing the logs of the clusters
-    :return: list of XES log parsers, list of names of the logs
-    """
-    result = []
-    indices = []
-
-    counter = 0
-    for log_file in os.listdir(folder_path):
-        if log_file.endswith(".xes"):
-            counter += 1
-            result += [pm.read_xes(os.path.join(folder_path, log_file))]
-            indices += [log_file[:-4]]
-    print(f"Loaded {counter} clusters logs")
-    return result, indices
+# import ClusterMind.cm_clustering as cm
 
 
-def load_clusters_logs_from_indices(original_log_path, clusters_indices_path):
-    """
-    Loads the singles clusters log from the original log given a list of indices trace-->cluster
-
-    :param original_log_path: path to original un-clustered log
-    :param clusters_indices_path: path to csv file containing the trace labels
-    """
-    print("NOT YET IMPLEMENTED")
+def compute_silhouette(log_input_2D, traces_clusters_labels):
+    mean_silhouette = silhouette_score(log_input_2D, traces_clusters_labels)
+    print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
+    return mean_silhouette
 
 
-def compute_f1(clusters_logs, indices_logs, output_csv_file_path):
+def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
     """
     Compute the F1 score, along with the fitness and precision, of all the clusters.
     The details are stored in the desired output file and the average is returned in output.
 
-    :param clusters_logs:
-    :param indices_logs:
+    :param clusters_logs: list of XES log parsers
+    :param traces_clusters_labels: list of clusters labels, where each index is the index of the trace and the value is the associated cluster label
     :param output_csv_file_path:
     :return: fitness_avg, precision_avg, f1_avg
     """
@@ -81,7 +63,7 @@ def compute_f1(clusters_logs, indices_logs, output_csv_file_path):
             precision_avg += precision
             f1_avg += f1
 
-            row_to_write = [indices_logs[current_index], traces_num, fitness, precision, f1]
+            row_to_write = [traces_clusters_labels[current_index], traces_num, fitness, precision, f1]
             csv_detailed_out.writerow(row_to_write)
 
             current_index += 1
@@ -99,11 +81,91 @@ def compute_f1(clusters_logs, indices_logs, output_csv_file_path):
     return fitness_avg, precision_avg, f1_avg
 
 
+def visualize_silhouette(input2D, traces_cluster_labels, silhouette_avg):
+    """
+Visualize the silhouette score of each cluster and trace
+
+    :param input2D:
+    :param silhouette_avg:
+    :param traces_cluster_labels:
+    """
+    sample_silhouette_values = silhouette_samples(input2D, traces_cluster_labels)
+    n_clusters = len(set(traces_cluster_labels))
+
+    fig, (ax1) = plt.subplots(1, 1)
+    fig.set_size_inches(18, 7)
+    ax1.set_xlim([-1, 1])
+    ax1.set_ylim([0, len(input2D) + (n_clusters + 1) * 10])
+
+    y_lower = 10
+    for i in sorted(set(traces_cluster_labels)):
+        # Aggregate the silhouette scores for samples belonging to
+        # cluster i, and sort them
+        ith_cluster_silhouette_values = sample_silhouette_values[traces_cluster_labels == i]
+
+        ith_cluster_silhouette_values.sort()
+
+        size_cluster_i = ith_cluster_silhouette_values.shape[0]
+        y_upper = y_lower + size_cluster_i
+
+        color = cm.nipy_spectral(float(i) / n_clusters)
+        ax1.fill_betweenx(np.arange(y_lower, y_upper),
+                          0, ith_cluster_silhouette_values,
+                          facecolor=color, edgecolor=color, alpha=0.7)
+
+        # Label the silhouette plots with their cluster numbers at the middle
+        ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
+
+        # Compute the new y_lower for next plot
+        y_lower = y_upper + 10  # 10 for the 0 samples
+
+    ax1.set_title("The silhouette plot for the various clusters.")
+    ax1.set_xlabel("The silhouette coefficient values")
+    ax1.set_ylabel("Cluster label")
+
+    # The vertical line for average silhouette score of all the values
+    ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
+
+    ax1.set_yticks([])  # Clear the yaxis labels / ticks
+    ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    output_file_path = "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/experiments/REAL-LIFE-EXPLORATION/SEPSIS/clusters_rules-treeSplit_rules/2-clustered-logs/f1-results.csv"
-    clusters_logs, indices_logs = load_clusters_logs_from_folder(
-        "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/experiments/REAL-LIFE-EXPLORATION/SEPSIS/clusters_rules-treeSplit_rules/2-clustered-logs")
-    compute_f1(clusters_logs, indices_logs, output_file_path)
+    log_path = "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/input/SEPSIS-log.xes"
+    labels_path = "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/experiments/REAL-LIFE-EXPLORATION/SEPSIS/clusters_rules-treeSplit_rules/3-results/traces-labels.csv"
+    out_folder = "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis"
+
+    logs_folder = "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/ActiTrac/sepsis"
+    clusters_logs, indices_logs = utils.load_clusters_logs_from_folder(logs_folder)
+
+    # labels = np.array(indices_logs)
+    labels = []
+    # log = pm.read_xes(log_path)
+    nLog = []
+    l = 0
+    for log in clusters_logs:
+        for i in range(len(log)):
+            labels += [l]
+            nLog += [[]]
+            for j in range(len(log[i])):
+                nLog[i] += [hash(log[i][j]['concept:name'])]
+        l += 1
+
+    labels = np.array(labels)
+
+    max_len = max(len(z) for z in nLog)
+
+    nnLog = np.zeros((len(nLog), max_len))
+
+    for i in range(len(nLog)):
+        for j in range(len(nLog[i])):
+            nnLog[i][j] = nLog[i][j]
+
+    avg_silhouette = compute_silhouette(nnLog, labels)
+
+    visualize_silhouette(nnLog, labels, avg_silhouette)
 
 #
 # def retrieve_clusters_statistics_multi_perspective(
