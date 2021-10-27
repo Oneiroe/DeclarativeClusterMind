@@ -1,5 +1,4 @@
 import csv
-import json
 
 import numpy as np
 import pandas as pd
@@ -225,10 +224,11 @@ def extract_detailed_trace_attributes_csv(trace_labels_file_path,
         for line in csv_file:
             if header:
                 # BEWARE if index goes out of range it does not rise exception
-                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:]
+                # BEWARE it is assumed that the last 3 columns are the performances columns
+                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:-3]
                 header = False
             else:
-                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:]]
+                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:-3]]
 
     featured_data_attributes = pd.DataFrame(featured_data_attributes, columns=features_names_attributes)
     if clean_attributes:
@@ -240,6 +240,46 @@ def extract_detailed_trace_attributes_csv(trace_labels_file_path,
     # TODO output labelled data for debugging
 
     return featured_data_attributes, features_names_attributes
+
+
+def extract_detailed_trace_performances_csv(trace_labels_file_path,
+                                            output_path,
+                                            label_feature_index=1,
+                                            clean_attributes=True):
+    """
+    Return a matrix where the rows are the performances and the columns are the traces, and
+    each cell contains the value of the performance
+
+    :param trace_labels_file_path:
+    :param label_feature_index:
+    :param clean_attributes:
+    :param output_path:
+    :return:
+    """
+    # ATTRIBUTES
+    featured_data_performances = []
+    features_names_performances = []
+    with open(trace_labels_file_path, 'r') as file:
+        csv_file = csv.reader(file, delimiter=';')
+        header = True
+        for line in csv_file:
+            if header:
+                # BEWARE if index goes out of range it does not rise exception
+                features_names_performances = line[-3:]
+                header = False
+            else:
+                featured_data_performances += [line[-3:]]
+
+    featured_data_performances = pd.DataFrame(featured_data_performances, columns=features_names_performances)
+    if clean_attributes:
+        # non-numerical attributes and sets cannot be used for decision tree construction
+        featured_data_performances = featured_data_performances.replace({'\[': '', '\]': ''}, regex=True)
+        for i in featured_data_performances:
+            featured_data_performances[i] = pd.to_numeric(featured_data_performances[i], errors='coerce')
+
+    # TODO output labelled data for debugging
+
+    return featured_data_performances, features_names_performances
 
 
 def import_trace_measures_from_csv(input_file_path, traces_num, constraints_num, measures_num):

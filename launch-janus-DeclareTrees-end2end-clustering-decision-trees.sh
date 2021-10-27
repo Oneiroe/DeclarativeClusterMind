@@ -29,10 +29,11 @@ CLUSTERING_POLICY="performances"
 # 'specific-attribute'
 # 'performances'
 # 'mixed'
-SPLIT_POLICY="rules"
+SPLIT_POLICY="performances"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
+# 'performances'
 # 'mixed'
 
 # experiment folders
@@ -49,7 +50,7 @@ mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DAT
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="kmeans"
+CLUSTERING_ALGORITHM="optics"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -68,7 +69,7 @@ VISUALIZATION_FLAG="-vf"
 #APPLY_PCA_FLAG="True"
 APPLY_PCA_FLAG="-pca"
 #APPLY_PCA_FLAG=""
-CLUSTERS_NUMBER=20
+CLUSTERS_NUMBER=10
 
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
@@ -82,6 +83,7 @@ BRANCHING_ORDER_DECREASING_FLAG="True"
 ## 'attributes'
 ## 'specific-attribute'
 ## 'mixed'
+## 'performances'
 
 # Input log
 #LOG_NAME="BPIC13"
@@ -139,7 +141,11 @@ fi
 
 # Launch clustering
 echo "################################ CLUSTERING"
-python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER #-tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+if [ $CLUSTERING_POLICY == "rules" ] || [ $CLUSTERING_POLICY == "mixed" ]; then
+  python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+else
+  python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER
+fi
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"

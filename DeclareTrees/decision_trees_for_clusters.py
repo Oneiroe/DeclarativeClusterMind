@@ -1,6 +1,7 @@
 import os
 import sys
 from DeclareTrees.declare_trees import retrieve_decision_tree_rules_for_clusters
+from DeclareTrees.declare_trees import retrieve_decision_tree_performances_for_clusters
 from DeclareTrees.declare_trees import retrieve_decision_tree_multi_perspective_for_clusters
 from DeclareTrees.declare_trees import retrieve_decision_tree_attributes_for_clusters
 
@@ -39,6 +40,14 @@ if __name__ == '__main__':
         # SPECIFIC ATTRIBUTE
         print("split on single specific attribute not yet implemented")
         pass
+    elif split_policy == 'performances':
+        # PERFORMANCES
+        print("performances-only decision tree")
+        retrieve_decision_tree_performances_for_clusters(labels_file,
+                                                         j3tree_trace_measures_csv,
+                                                         output_file,
+                                                         focussed_csv,
+                                                         label_feature_index)
     elif split_policy == 'rules':
         # RULES
         print("rules-only decision tree")

@@ -609,18 +609,25 @@ def export_traces_labels_multi_perspective(log, clusters, output_file_path):
     print("Exporting traces cluster labels to " + output_file_path)
     with open(output_file_path, 'w') as output_file:
         all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
+        performances = ["case-duration", "case-length", "case-unique-tasks"]
 
         csv_writer = csv.writer(output_file, delimiter=';')
         header = [
                      "TRACE",
                      "CLUSTER"
-                 ] + all_events_attributes
+                 ] + all_events_attributes + performances
         csv_writer.writerow(header)
 
         # put traces in sub-logs
         for trace_index in range(len(log)):
-            trace_attributes = get_attributes_statistics_in_trace(log[trace_index], all_events_attributes)
-            csv_writer.writerow([trace_index, clusters.labels_[trace_index]] + trace_attributes)
+            trace=log[trace_index]
+            trace_attributes = get_attributes_statistics_in_trace(trace, all_events_attributes)
+            trace_performances = [
+                (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
+                len(trace),
+                len(set(e['concept:name'] for e in trace))
+            ]
+            csv_writer.writerow([trace_index, clusters.labels_[trace_index]] + trace_attributes + trace_performances)
 
 
 def plot_clusters_imperative_models(clusters_logs, model='DFG'):
@@ -1073,6 +1080,8 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     """
     Cluster the traces of a log according to both a set of declarative rules and the log attributes
 
+    TODO BEWARE using performances in the clustering may cover all the other effects, especially using PCA. Consider to have a selection of parameters to use
+
     :param number_of_clusters:
     :param trace_measures_csv_file_path:
     :param log_file_path:
@@ -1092,8 +1101,8 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
 
     print("2D shape rules:" + str(input2D_rules.shape))
 
-    attributes_data, attributes_names = get_log_representation.get_default_representation(
-        xes_importer.apply(log_file_path))
+    log = xes_importer.apply(log_file_path)
+    attributes_data, attributes_names = get_log_representation.get_default_representation(log)
     # 1-hot encoding
     input2D_attributes = pd.DataFrame(attributes_data, columns=attributes_names)
 
@@ -1102,15 +1111,32 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print("Attributes: " + str(attributes_num))
     print(attributes_names)
 
-    input2D = pd.concat([input2D_rules, input2D_attributes], axis=1)
-    features_names = np.concatenate([constraints_names, attributes_names])
+    data_performances = [[
+        (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
+        len(trace),
+        len(set(e['concept:name'] for e in trace))
+    ] for trace in log]
+    performances_names = [
+        "case-duration",
+        "case-length",
+        "case-unique-tasks"
+    ]
+    # 1-hot encoding
+    input2D_performances = pd.DataFrame(data_performances, columns=performances_names)
+
+    input2D = pd.concat([input2D_rules, input2D_attributes, input2D_performances], axis=1)
+    features_names = np.concatenate([constraints_names, attributes_names, performances_names])
     features_num = features_names.shape[0]
+
+    print(
+        f"FEATURES  rules:{len(constraints_names)} attributes:{len(attributes_names)} performances:{len(performances_names)}")
 
     # Clean NaN and infinity
     input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
     # input2D = np.nan_to_num(np.power(input2D, -10), posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
     # input2D = np.nan_to_num(input2D, posinf=100, neginf=-100)
 
+    print('Dimension of data= ' + str(input2D.shape))
     # reduce dimensions with PCA
     # pca = None
     pca_variance = 0.98
@@ -1128,7 +1154,7 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
-                                                constraints_names, visualization_flag,
+                                                features_names, visualization_flag,
                                                 apply_pca_flag, pca)
 
 

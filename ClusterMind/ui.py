@@ -86,8 +86,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
 
     # MIXED PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_mixed = subparsers.add_parser("mixed",
-                                         description="clustering based on rules and attributes",
-                                         help="clustering based on rules and attributes", parents=[parent_parser])
+                                         description="clustering based on rules, attributes, and performances",
+                                         help="clustering based on rules, attributes, and performances", parents=[parent_parser])
     parser_mixed.add_argument('-pca', '--apply-pca-flag',
                               help='Flag to enable features reduction through PCA',
                               action="store_true", widget='BlockCheckbox')
