@@ -35,6 +35,7 @@ from scipy.cluster import hierarchy
 from sklearn.metrics import silhouette_score, silhouette_samples
 
 import plotly.express as px
+import plotly.graph_objects as go
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 
@@ -620,7 +621,7 @@ def export_traces_labels_multi_perspective(log, clusters, output_file_path):
 
         # put traces in sub-logs
         for trace_index in range(len(log)):
-            trace=log[trace_index]
+            trace = log[trace_index]
             trace_attributes = get_attributes_statistics_in_trace(trace, all_events_attributes)
             trace_performances = [
                 (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
@@ -661,6 +662,39 @@ def plot_clusters_imperative_models(clusters_logs, model='DFG'):
             gviz = dfg_visualization.apply(dfg, log=clusters_logs[cluster_index],
                                            variant=dfg_visualization.Variants.PERFORMANCE)
             dfg_visualization.view(gviz)
+
+
+def plot_clusters_performances_box_plots(clusters_logs, output_folder=None):
+    """
+Plot the boxplot of the performance (execution time) of each cluster
+
+    TODO use previously computed input2D instead of recomputing from scratch, just BEWARE the completion time may be lost due to PCA
+
+    :param output_folder:
+    :param clusters_logs: container of pm4py xes logs, one for each cluster
+    """
+    print("plotting boxplots of clusters performances...")
+    data = {}
+    for cluster_index in clusters_logs:
+        current_data = [(trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds()
+                        for trace in clusters_logs[cluster_index]]
+        data[sum(current_data) / len(current_data)] = [cluster_index, current_data]
+
+    fig = go.Figure()
+    for cluster in sorted(data):
+        fig.add_trace(go.Box(y=data[cluster][1], name=f"Cluster-{data[cluster][0]}"))
+    # fig = px.box(df)
+    fig.update_layout(
+        title="Clusters performances",
+        yaxis_title="Seconds",
+    )
+    fig.show()
+
+    if output_folder is not None:
+        output_file = os.path.join(output_folder, "performances_boxplot")
+        print(f"Saving boxplot in {output_file}")
+        fig.write_html(f"{output_file}.html")
+        fig.write_image(f"{output_file}.svg")
 
 
 def visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
@@ -732,10 +766,12 @@ def visualize_pca_relevant_feature(pca, feature_names, output_folder):
         print(pd.DataFrame(dic.items()))
 
 
-def visualize_silhouette(clusters, input2D, traces_cluster_labels, silhouette_avg):
+def visualize_silhouette(clusters, input2D, traces_cluster_labels, silhouette_avg, output_folder=None):
     """
 Visualize the silhouette score of each cluster and trace
 
+    :param output_folder:
+    :param silhouette_avg:
     :param clusters:
     :param input2D:
     :param traces_cluster_labels:
@@ -779,6 +815,11 @@ Visualize the silhouette score of each cluster and trace
 
     ax1.set_yticks([])  # Clear the yaxis labels / ticks
     ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
+
+    if output_folder is not None:
+        output_file = os.path.join(output_folder, "silhouette")
+        print(f"Saving silhouette plot in {output_file}")
+        plt.savefig(f"{output_file}.svg")
 
     plt.show()
 
@@ -850,7 +891,9 @@ Retrieve and export cluster statistics and visualization if enabled
         print(">>>>>>>>>>>> Visualization")
         # plot_clusters_imperative_models(clusters_logs)
 
-        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette)
+        plot_clusters_performances_box_plots(clusters_logs, output_folder)
+
+        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette, output_folder)
 
         # plot_tSNE_3d(input2D, clusters)
         # visualize_heatmap(input2D, clusters)

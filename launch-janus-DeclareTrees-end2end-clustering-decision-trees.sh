@@ -29,7 +29,7 @@ CLUSTERING_POLICY="performances"
 # 'specific-attribute'
 # 'performances'
 # 'mixed'
-SPLIT_POLICY="performances"
+SPLIT_POLICY="rules"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
@@ -170,6 +170,8 @@ python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER 
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
 cp ${PROCESSED_DATA_FOLDER}/*labels.csv $RESULTS_FOLDER"/traces-labels.csv"
+cp ${PROCESSED_DATA_FOLDER}/performances_boxplot* $RESULTS_FOLDER
+cp ${PROCESSED_DATA_FOLDER}/silhouette* $RESULTS_FOLDER
 if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
   cp $PROCESSED_DATA_FOLDER"/pca-features.csv" $RESULTS_FOLDER"/pca-features.csv"
 fi
