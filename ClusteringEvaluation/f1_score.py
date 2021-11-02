@@ -37,10 +37,17 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
         fitness_avg = 0
         precision_avg = 0
         f1_avg = 0
+        tot_clusters = len(clusters_logs)
+
+        fitness_weighted_avg = 0
+        precision_weighted_avg = 0
+        f1_weighted_avg = 0
+        tot_taces = 0
 
         current_index = 0
         for current_s_log in clusters_logs:
             traces_num = len(current_s_log)
+            tot_taces += traces_num
 
             # Model discovery
             # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
@@ -63,20 +70,29 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
             precision_avg += precision
             f1_avg += f1
 
+            fitness_weighted_avg += fitness * traces_num
+            precision_weighted_avg += precision * traces_num
+            f1_weighted_avg += f1 * traces_num
+
             row_to_write = [traces_clusters_labels[current_index], traces_num, fitness, precision, f1]
             csv_detailed_out.writerow(row_to_write)
 
             current_index += 1
 
-        fitness_avg = fitness_avg / len(clusters_logs)
-        precision_avg = precision_avg / len(clusters_logs)
-        f1_avg = f1_avg / len(clusters_logs)
+        fitness_avg = fitness_avg / tot_clusters
+        precision_avg = precision_avg / tot_clusters
+        f1_avg = f1_avg / tot_clusters
+
+        fitness_weighted_avg = fitness_weighted_avg / tot_taces
+        precision_weighted_avg = precision_weighted_avg / tot_taces
+        f1_weighted_avg = f1_weighted_avg / tot_taces
 
         csv_detailed_out.writerow(["AVERAGE", "", fitness_avg, precision_avg, f1_avg])
+        csv_detailed_out.writerow(["WEIGHTED-AVERAGE", "", fitness_weighted_avg, precision_weighted_avg, f1_weighted_avg])
 
-    print(f"average Fitness: {fitness_avg}")
-    print(f"average Precision: {precision_avg}")
-    print(f"average F1: {f1_avg}")
+    print(f"average Fitness: {fitness_avg}, weighted average:{fitness_weighted_avg}")
+    print(f"average Precision: {precision_avg}, weighted average:{precision_weighted_avg}")
+    print(f"average F1: {f1_avg}, weighted average:{f1_weighted_avg}")
 
     return fitness_avg, precision_avg, f1_avg
 
