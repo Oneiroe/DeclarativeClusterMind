@@ -50,8 +50,8 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
             tot_taces += traces_num
 
             # Model discovery
-            # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
-            petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
+            petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
+            # petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
 
             # FITNESS
             # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)

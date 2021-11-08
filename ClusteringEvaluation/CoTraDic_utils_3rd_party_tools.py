@@ -1,6 +1,9 @@
+import argparse
+
 import xlrd
 
-from ClusteringEvaluation.utils import export_traces_clusters_labels
+from ClusteringEvaluation.utils import export_traces_clusters_labels, load_clusters_logs_from_indices_file, \
+    split_log_according_to_clusters
 
 
 def CoTraDic_import_clusters_indices(xls_file_path, output_csv_path=None):
@@ -50,7 +53,19 @@ imports the trace labels from the clustering results of CoTraDict
     return result
 
 
+def CoTraDic_export_clusters_log_from_result(original_log_file, xls_file_path, output_folder):
+    labels = CoTraDic_import_clusters_indices(xls_file_path)
+    split_log_according_to_clusters(original_log_file, labels, output_folder)
+
+
 if __name__ == '__main__':
-    CoTraDic_import_clusters_indices(
-        "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis/sepsis Fri Oct 2021 14.02.xls",
-        "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis/sepsis_labels.csv")
+    parser = argparse.ArgumentParser(description='CoTraDic results importer')
+
+    parser.add_argument('-l', '--log-file', type=str, help='log file path', required=True)
+    parser.add_argument('-x', '--xls-result', type=str, help='xls result file', required=True)
+    parser.add_argument('-o', '--output-folder', type=str, help='output folder path', required=True)
+
+    args = parser.parse_args()
+
+    CoTraDic_export_clusters_log_from_result(args.log_file,args.xls_result,args.output_folder)
+

@@ -59,7 +59,7 @@ Given an event log and the cluster indices for each of its traces, it is returne
 
     if output_folder is not None:
         for sub_log in sub_logs:
-            pm.write_xes(sub_logs[sub_log], os.path.join(output_folder, sub_log))
+            pm.write_xes(sub_logs[sub_log], os.path.join(output_folder, f"Cluster_{sub_log}.xes"))
 
     return sub_logs
 
@@ -108,8 +108,8 @@ def log_to_2d_array(log):
 
 if __name__ == '__main__':
     log = "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/input/SEPSIS-log.xes"
-    cotradict = "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis/sepsis Fri Oct 2021 14.02.xls"
-    labels = "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis/sepsis_labels.csv"
-    out_folder = "/home/alessio/Data/Phd/Research/ClusterMind/Trace-Clustering-competitors/cotradic/results/sepsis"
+    cotradict = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/clusters.xls Fri Nov 2021 15.58.xls"
+    labels = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/sepsis_labels.csv"
+    out_folder = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/"
 
     load_clusters_logs_from_indices_file(log, labels, out_folder)
