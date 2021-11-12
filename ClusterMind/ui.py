@@ -1,3 +1,5 @@
+import os
+
 from gooey import Gooey, GooeyParser
 import ClusterMind.cm_clustering as cm_clustering
 import ClusterMind.pareto_declarative_hierarchical_clustering as pareto_clustering
@@ -87,7 +89,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     # MIXED PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_mixed = subparsers.add_parser("mixed",
                                          description="clustering based on rules, attributes, and performances",
-                                         help="clustering based on rules, attributes, and performances", parents=[parent_parser])
+                                         help="clustering based on rules, attributes, and performances",
+                                         parents=[parent_parser])
     parser_mixed.add_argument('-pca', '--apply-pca-flag',
                               help='Flag to enable features reduction through PCA',
                               action="store_true", widget='BlockCheckbox')
@@ -133,6 +136,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     # 'performances'
     # 'mixed'
     # 'pareto'
+
+    os.makedirs(args.output_folder, exist_ok=True)
 
     if clustering_policy == 'rules':
         cm_clustering.behavioural_clustering(args.trace_measures_csv_file_path,

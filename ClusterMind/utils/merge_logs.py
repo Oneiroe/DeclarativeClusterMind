@@ -48,10 +48,10 @@ Merge the input log into one unique xes event log
     :param logs_files_paths:
     """
     result_log = EventLog()
-    for log_file in os.listdir(logs_files_paths):
+    for log_file in logs_files_paths:
         if log_file.endswith("xes"):
             print(log_file)
-            log = pm.read_xes(os.path.join(logs_files_paths, log_file))
+            log = pm.read_xes(log_file)
             result_log._attributes.update(log._attributes)
             result_log._classifiers.update(log._classifiers)
             result_log._extensions.update(log._extensions)
@@ -60,6 +60,7 @@ Merge the input log into one unique xes event log
             for trace in log:
                 result_log.append(trace)
     pm.write_xes(result_log, output_log_file_path)
+    print(f"Log merged in {output_log_file_path}")
 
 
 if __name__ == '__main__':

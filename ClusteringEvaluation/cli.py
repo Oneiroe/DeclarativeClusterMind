@@ -1,6 +1,6 @@
 from gooey import Gooey, GooeyParser
 
-from ClusteringEvaluation import f1_score, utils
+import f1_score, utils
 
 
 @Gooey(
@@ -27,20 +27,27 @@ def main():
     subparsers.required = True
 
     # F1-SCORE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    parser_f1 = subparsers.add_parser("f1",
-                                      description="Average Precision/Recall measure of the clusters",
-                                      help="Precision/Recall measure of the clusters", parents=[parent_parser])
-    parser_f1.add_argument('-a', '--discovery-algorithm',
-                           help='Discovery algorithm to be used for the discovery of clusters models',
-                           type=str, widget='Dropdown',
-                           choices=['inductiveMiner',
-                                    'heuristicMiner'],
-                           default='inductiveMiner')
+    parser_f1_aggregate = subparsers.add_parser("f1",
+                                                description="Average Precision/Recall measure of the clusters",
+                                                help="Precision/Recall measure of the clusters",
+                                                parents=[parent_parser])
+    parser_f1_aggregate.add_argument('-a', '--discovery-algorithm',
+                                     help='Discovery algorithm to be used for the discovery of clusters models',
+                                     type=str, widget='Dropdown',
+                                     choices=['inductiveMiner',
+                                              'heuristicMiner'],
+                                     default='heuristicMiner')
+
+    # F1-SCORE AGGREGATION parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_f1_aggregate = subparsers.add_parser("aggregate-f1",
+                                                description="Aggregate average Precision/Recall measure of the clusters",
+                                                help="Aggregate Precision/Recall measure of the clusters",
+                                                parents=[parent_parser])
 
     # SILHOUETTE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_silhouette = subparsers.add_parser("silhouette",
-                                      description="Silhouette measure of the clusters",
-                                      help="Silhouette measure of the clusters", parents=[parent_parser])
+                                              description="Silhouette measure of the clusters",
+                                              help="Silhouette measure of the clusters", parents=[parent_parser])
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -48,7 +55,7 @@ def main():
     print(args)
 
     metric = args.metric
-    print("Clustering policy: " + str(metric))
+    print("Evaluation metric: " + str(metric))
     # 'f1'
     # 'silhouette'
 
@@ -59,6 +66,8 @@ def main():
             indices_logs,
             args.output_file
         )
+    elif metric == 'aggregate-f1':
+        f1_score.aggregate_f1_results(args.input_logs_folder, args.output_file)
     elif metric == 'silhouette':
         print("Not yet Implemented")
 
