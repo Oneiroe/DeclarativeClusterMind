@@ -1,5 +1,6 @@
 import csv
 import math
+import statistics
 from random import random
 import ClusterMind.IO.J3Tree_import as j3tio
 
@@ -194,7 +195,7 @@ Constraints are used in total frequency order from the most common among the clu
     return result_tree
 
 
-def get_clusters_table(clusters_file):
+def get_clusters_table_sum(clusters_file):
     """
     It builds a matrix from the SJ2T results
 
@@ -243,6 +244,52 @@ def get_clusters_table(clusters_file):
     return clusters_table, clusters_index, constraints_index
 
 
+def get_clusters_table_var(clusters_file):
+    """
+    It builds a matrix from the SJ2T results
+
+    result [constraint x cluster] with headers for column and rows, plus last column "VAR" is the variance of the row
+    Thus the column 0 are the constraints names, row 0 are the clusters names, column -1 is the variance of the row
+
+    :param clusters:
+    """
+    clusters_table = []
+    clusters_index = {}
+    constraints_index = {}
+    with open(clusters_file, 'r') as aggregated_result:
+        # cluster_csv = csv.reader(aggregated_result, delimiter=';')
+        csv_map = csv.reader(aggregated_result, delimiter=';')
+        first = True
+        for line in csv_map:
+            if first:
+                row = line + ['VAR']
+                first = False
+            else:
+                row = [line[0]]
+                for i in line[1:]:
+                    if math.isnan(float(i)):
+                        # row += [float(0)]  # consider vacuous satisfaction as a violation
+                        # continue  # equal to +=0
+                        # row += [float(1)]
+                        row += [float(i)]
+                        # it is a vacuous satisfaction, but see atMostOne problem for the consequences of skipping it
+                        # e.g. atMostOne(a) was used to distinguish clusters with a and cluster without it
+                        # thus we keep the NaN and split each level in fulfilled, violated, and not activated
+                    else:
+                        row += [float(i)]
+                row += [statistics.variance(row[1:])]
+            clusters_table += [row]
+    clusters_counter = 1
+    for cluster in clusters_table[0][1:-1]:
+        clusters_index[cluster] = clusters_counter
+        clusters_counter += 1
+    constraints_counter = 1
+    for constraint in clusters_table[1:]:
+        constraints_index[constraint[0]] = constraints_counter
+        constraints_counter += 1
+    return clusters_table, clusters_index, constraints_index
+
+
 def order_clusters_table(clusters_table, reverse=True):
     """
     Given a matrix [constrain X clusters] It orders the constraints by frequency across the clusters
@@ -275,6 +322,27 @@ def get_most_common_constraint(cluster_table, clusters, used_constraints, revers
     return order_clusters_table(view, reverse)[1][0]
 
 
+def get_most_variant_constraint(cluster_table, clusters, used_constraints, reverse):
+    view = []
+    header = True
+    for row in cluster_table:
+        if row[0] in used_constraints:
+            continue
+        view_row = [row[0]]
+        for cluster_i in range(len(row)):
+            if cluster_table[0][cluster_i] in clusters:
+                view_row += [row[cluster_i]]
+                if header or math.isnan(row[cluster_i]):
+                    continue
+        if header:
+            view_row += [row[-1]]
+            header = False
+        else:
+            view_row += [statistics.variance(view_row[1:])]
+        view += [view_row]
+    return order_clusters_table(view, reverse)[1][0]
+
+
 def build_declare_tree_dynamic(clusters_file, constraint_measure_threshold, output_file, minimize=False, reverse=True):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
@@ -287,7 +355,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     :return:
     """
     # Import initial data
-    clusters_table, clusters_indices, constraints_indices = get_clusters_table(clusters_file)
+    clusters_table, clusters_indices, constraints_indices = get_clusters_table_sum(clusters_file)
     # root initialization
     result_tree = ClusterNode(threshold=constraint_measure_threshold)
     result_tree.clusters = set(clusters_table[0][1:-1])
@@ -828,3 +896,59 @@ Given the labels of clusters and their log measures
                                         rounded=True,
                                         # special_characters = True
                                         )
+
+
+def build_declare_tree_variance(clusters_file, constraint_measure_threshold, output_file, minimize=False, reverse=True):
+    """
+Builds the DECLARE tree according to the aggregated result of the clusters.
+Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
+    :param reverse:
+    :param minimize:
+    :param output_file:
+    :param clusters_file:
+    :param constraint_measure_threshold: threshold above which a constraint's measure is considered part of a cluster
+    :return:
+    """
+    # Import initial data
+    clusters_table, clusters_indices, constraints_indices = get_clusters_table_var(clusters_file)
+    # root initialization
+    result_tree = ClusterNode(threshold=constraint_measure_threshold)
+    result_tree.clusters = set(clusters_table[0][1:-1])
+    leaves = set()
+    leaves.add(result_tree)
+
+    # while splittable leaves
+    while len(leaves) > 0:
+        #   for branch
+        new_leaves = set()
+        for leaf in leaves:
+            if len(leaf.clusters) == 1 or len(leaf.used_constraints) == len(constraints_indices):
+                continue
+            #       split according to most variant constraint
+            leaf.constraint = get_most_variant_constraint(clusters_table, leaf.clusters, leaf.used_constraints, reverse)
+            for cluster_in_node in leaf.clusters:
+                leaf.insert_child(cluster_in_node, clusters_table[constraints_indices[leaf.constraint]][
+                    clusters_indices[cluster_in_node]])
+            if leaf.ok:
+                leaf.ok.used_constraints = leaf.used_constraints.copy()
+                leaf.ok.used_constraints.add(leaf.constraint)
+                new_leaves.add(leaf.ok)
+            if leaf.nan:
+                leaf.nan.used_constraints = leaf.used_constraints.copy()
+                leaf.nan.used_constraints.add(leaf.constraint)
+                new_leaves.add(leaf.nan)
+            if leaf.nok:
+                leaf.nok.used_constraints = leaf.used_constraints.copy()
+                leaf.nok.used_constraints.add(leaf.constraint)
+                new_leaves.add(leaf.nok)
+        leaves = new_leaves
+
+    if minimize:
+        minimize_tree(result_tree)
+
+    print("### Graphviz")
+    graph = graphviz.Digraph(format='svg')
+    print_tree_graphviz(graph, result_tree)
+    graph.render(filename=output_file)
+
+    return result_tree
