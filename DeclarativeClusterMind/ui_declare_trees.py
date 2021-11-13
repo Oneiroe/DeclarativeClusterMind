@@ -22,8 +22,7 @@ from DeclarativeClusterMind.declare_trees.decision_trees import retrieve_decisio
     retrieve_decision_tree_multi_perspective_for_traces_to_clusters, \
     retrieve_decision_tree_attributes_for_traces_to_clusters, \
     retrieve_decision_tree_performances_for_traces_to_clusters, retrieve_decision_tree_rules_for_traces_to_clusters
-from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_static, build_declare_tree_dynamic, \
-    build_declare_tree_variance
+from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_static, build_declare_tree_dynamic
 
 
 @Gooey(
@@ -162,17 +161,20 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         elif branching_policy == "dynamic-frequency":
             build_declare_tree_dynamic(args.input_featured_data,
                                        args.constraints_threshold,
+                                       branching_policy,
                                        args.output_file,
                                        args.minimize_tree,
                                        args.decreasing_order)
         elif branching_policy == "dynamic-variance":
-            build_declare_tree_variance(args.input_featured_data,
-                                        args.constraints_threshold,
-                                        args.output_file,
-                                        args.minimize_tree,
-                                        args.decreasing_order)
+            build_declare_tree_dynamic(args.input_featured_data,
+                                       args.constraints_threshold,
+                                       branching_policy,
+                                       args.output_file,
+                                       args.minimize_tree,
+                                       args.decreasing_order)
         else:
-            print("Branching policy not recognized. Supported policies: [static-frequency, dynamic-frequency, dynamic-variance] ")
+            print(
+                "Branching policy not recognized. Supported policies: [static-frequency, dynamic-frequency, dynamic-variance] ")
 
     elif tree_technique == 'decision-tree-traces-to-clusters':
         split_policy = args.split_perspective
