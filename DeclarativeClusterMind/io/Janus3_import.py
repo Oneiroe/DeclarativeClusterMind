@@ -134,49 +134,18 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
     each cell contains the measure of the constraint in that trace or the value of the attribute
 
     :param trace_measures_csv_file_path:
+    :param trace_labels_file_path:
     :param output_path:
+    :param label_feature_index:
     :param measure:
+    :param clean_attributes:
     """
-
     # RULES
-    temp_res = {}
-    traces_mapping = {}
-    trace_index = 0
-    featured_data_rules = []
-    features_names_rules = []
-    temp_pivot = ""
-    stop_flag = 2
-    with open(trace_measures_csv_file_path, 'r') as file:
-        csv_file = csv.DictReader(file, delimiter=';')
-        if len(csv_file.fieldnames) == 3:
-            measure = csv_file.fieldnames[-1]
-        for line in csv_file:
-            if temp_pivot == "":
-                temp_pivot = line['Constraint']
-            temp_res.setdefault(line['Constraint'], {})
-            if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
-                trace_index += 1
-            if line['Constraint'] == temp_pivot:
-                featured_data_rules += [[]]
-                stop_flag -= 1
-            if stop_flag >= 1:
-                features_names_rules += [line['Constraint']]
+    featured_data_rules, features_names_rules = extract_detailed_trace_perspective_csv(trace_measures_csv_file_path,
+                                                                                       output_path,
+                                                                                       measure)
 
-            temp_res[line['Constraint']][traces_mapping[line['Trace']]] = line[measure]
-            featured_data_rules[-1] += [float(line[measure])]
-
-        header = ["Constraint"]
-        for trace in temp_res[list(temp_res.keys())[0]].keys():
-            header += [trace]
-
-        with open(output_path, 'w') as out_file:
-            writer = csv.DictWriter(out_file, fieldnames=header, delimiter=';')
-            writer.writeheader()
-            for constraint in temp_res:
-                temp_res[constraint].update({"Constraint": constraint})
-                writer.writerow(temp_res[constraint])
-
-    # ATTRIBUTES
+    # ATTRIBUTES+PERFORMANCES
     featured_data_attributes = []
     features_names_attributes = []
     with open(trace_labels_file_path, 'r') as file:
@@ -185,6 +154,7 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
         for line in csv_file:
             if header:
                 # BEWARE if index goes out of range it does not rise exception
+                # BEWARE it DOES NOT assumes that the last 3 columns are the performances columns
                 features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:]
                 header = False
             else:
@@ -196,6 +166,7 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
         featured_data_attributes = featured_data_attributes.replace({'\[': '', '\]': ''}, regex=True)
         for i in featured_data_attributes:
             featured_data_attributes[i] = pd.to_numeric(featured_data_attributes[i], errors='coerce')
+
     # MERGE
     featured_data = pd.concat([pd.DataFrame(featured_data_rules, columns=features_names_rules),
                                featured_data_attributes], axis=1)
