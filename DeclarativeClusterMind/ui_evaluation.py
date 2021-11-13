@@ -1,11 +1,19 @@
+""" GUI/CLI interface to launch various evaluation functions for clusters
+
+Currently the following analysis are supported:
+
+    - f1-score: out of each cluster event log is discovered an imperative model and
+                it is checked the average F1-score(weighted Precision/Fitness) of the models set
+"""
+
 from gooey import Gooey, GooeyParser
 
-import f1_score, utils
+from evaluation import f1_score, utils
 
 
 @Gooey(
-    program_name='Clustering independent Evaluation',
-    program_description='Evaluation of clustering independent from the technique used',
+    program_name='Clustering independent evaluation',
+    program_description='evaluation of clustering independent from the technique used',
     # Defaults to ArgParse Description
 )
 def main():
@@ -19,7 +27,7 @@ def main():
                                widget='FileChooser', required=True)
 
     parser = GooeyParser(
-        description="Evaluation of clustering results independent form the techniques used. It takes in input only the resulting clustered event logs.")
+        description="evaluation of clustering results independent form the techniques used. It takes in input only the resulting clustered event logs.")
     parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
     parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
                         gooey_options={'visible': False})
@@ -55,7 +63,7 @@ def main():
     print(args)
 
     metric = args.metric
-    print("Evaluation metric: " + str(metric))
+    print("evaluation metric: " + str(metric))
     # 'f1'
     # 'silhouette'
 

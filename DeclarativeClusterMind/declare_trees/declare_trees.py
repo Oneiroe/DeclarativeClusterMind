@@ -2,7 +2,7 @@ import csv
 import math
 import statistics
 from random import random
-import ClusterMind.IO.J3Tree_import as j3tio
+import DeclarativeClusterMind.io.Janus3_import as j3tio
 
 from pm4py.objects.log.obj import EventLog
 import pm4py as pm

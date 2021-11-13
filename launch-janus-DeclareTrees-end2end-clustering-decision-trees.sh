@@ -144,9 +144,9 @@ fi
 # Launch clustering
 echo "################################ CLUSTERING"
 if [ $CLUSTERING_POLICY == "rules" ] || [ $CLUSTERING_POLICY == "mixed" ]; then
-  python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
 else
-  python3 -m ClusterMind.ui --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER
+  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER
 fi
 
 # Retrieve measures for each cluster
@@ -167,8 +167,8 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 done
 
 # merge results
-python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
-python3 -m ClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
+python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
+python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
 
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
@@ -182,16 +182,16 @@ fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_DECLARE_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
+python3 -m DeclarativeClusterMind.declare_trees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_DECLARE_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
 
 echo "################################ DECISION TREES clusters"
-python3 -m DeclareTrees.decision_trees_for_clustered_logs \
+python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clustered_logs \
   ${RESULTS_FOLDER}"/clusters-labels.csv" \
   ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
   0
 
 echo "################################ DECISION TREES traces"
-python3 -m DeclareTrees.decision_trees_for_clusters \
+python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
   ${RESULTS_FOLDER}"/decision_tree_traces.dot" \

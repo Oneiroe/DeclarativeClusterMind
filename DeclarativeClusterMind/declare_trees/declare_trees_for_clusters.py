@@ -1,7 +1,7 @@
 import sys
-from DeclareTrees.declare_trees import build_declare_tree
-from DeclareTrees.declare_trees import build_declare_tree_dynamic
-from DeclareTrees.declare_trees import build_declare_tree_variance
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_dynamic
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_variance
 
 if __name__ == '__main__':
     print(sys.argv)

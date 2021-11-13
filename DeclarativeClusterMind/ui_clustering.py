@@ -1,8 +1,10 @@
+""" GUI/CLI interface for Declarative Clustering"""
+
 import os
 
 from gooey import Gooey, GooeyParser
-import ClusterMind.cm_clustering as cm_clustering
-import ClusterMind.pareto_declarative_hierarchical_clustering as pareto_clustering
+import DeclarativeClusterMind.clustering.cm_clustering as cm_clustering
+import DeclarativeClusterMind.clustering.pareto_declarative_hierarchical_clustering as pareto_clustering
 
 
 @Gooey(

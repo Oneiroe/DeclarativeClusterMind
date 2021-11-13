@@ -1,6 +1,5 @@
-import os
 import sys
-from DeclareTrees.declare_trees import retrieve_decision_tree_rules_for_clustered_logs
+from DeclarativeClusterMind.declare_trees.declare_trees import retrieve_decision_tree_rules_for_clustered_logs
 
 if __name__ == '__main__':
     print(sys.argv)

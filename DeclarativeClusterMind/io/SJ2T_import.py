@@ -1,10 +1,15 @@
+""" Importer for the results of the former Janus 1.X version (code name: SJ2T)
+
+Deprecated! Use io.Janus3_import for the current Janus 2.X version
+"""
+
 import csv
 import json
 
 import numpy as np
 
 
-# Trace;Constraint;Events-Evaluation;Support;Confidence;Recall;.....
+# Trace;Constraint;Events-evaluation;Support;Confidence;Recall;.....
 # 0;    1;         2;                [3:]
 @DeprecationWarning
 def import_SJ2T_csv(input_file_path):

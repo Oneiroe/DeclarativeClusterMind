@@ -8,6 +8,7 @@ pm4py~=2.2.4
 sklearn~=0.0
 scikit-learn~=0.24.1
 graphviz~=0.14.1
-pydot~=1.4.1
 Gooey~=1.0.8.1
 wxPython~=4.1.1
+
+xlrd~=2.0.1

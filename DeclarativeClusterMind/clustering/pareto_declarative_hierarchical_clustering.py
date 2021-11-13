@@ -5,10 +5,10 @@ import csv
 from random import random
 import graphviz
 
-import ClusterMind.IO.J3Tree_import as j3io
-import ClusterMind.utils.aggregate_clusters_measures
-import ClusterMind.utils.split_log_according_to_declare_model as splitter
-from ClusterMind.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
+import DeclarativeClusterMind.io.Janus3_import as j3io
+import DeclarativeClusterMind.utils.aggregate_clusters_measures
+import DeclarativeClusterMind.utils.split_log_according_to_declare_model as splitter
+from DeclarativeClusterMind.clustering.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
 
 import pm4py as pm
 from pm4py.objects.log.importer.xes import importer as xes_importer
@@ -356,7 +356,7 @@ The recursion ends is:
     root.remove_intermediary_files(output_folder)
 
     # aggregate the clusters X rules results
-    ClusterMind.utils.aggregate_clusters_measures.aggregate_clusters_measures(output_folder,
+    DeclarativeClusterMind.utils.aggregate_clusters_measures.aggregate_clusters_measures(output_folder,
                                                                               "[logMeasures].csv",
                                                                               "aggregated_result.csv")
     # export traces labels
@@ -370,7 +370,7 @@ The recursion ends is:
     # TODO WIP
     # mean_silhouette = silhouette_score(input2D, labels)
     # print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-    # ClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
+    # DeclarativeClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
 
 if __name__ == '__main__':
-    print("Use ClusterMind.ui.py to launch the script via CLI/GUI ")
+    print("Use DeclarativeClusterMind.ui_clustering.py to launch the script via CLI/GUI ")

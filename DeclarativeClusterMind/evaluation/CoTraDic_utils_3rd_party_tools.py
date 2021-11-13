@@ -2,7 +2,7 @@ import argparse
 
 import xlrd
 
-from ClusteringEvaluation.utils import export_traces_clusters_labels, load_clusters_logs_from_indices_file, \
+from DeclarativeClusterMind.evaluation.utils import export_traces_clusters_labels, \
     split_log_according_to_clusters
 
 

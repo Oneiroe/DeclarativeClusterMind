@@ -1,8 +1,8 @@
 import sys
-import ClusterMind.IO.SJ2T_import as cmio
-from DeclareTrees.declare_trees import build_declare_tree
-from DeclareTrees.declare_trees import build_declare_tree_dynamic
-from DeclareTrees.declare_trees import build_declare_tree_variance
+import DeclarativeClusterMind.io.SJ2T_import as cmio
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_dynamic
+from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_variance
 
 if __name__ == '__main__':
     print(sys.argv)

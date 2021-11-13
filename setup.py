@@ -7,10 +7,10 @@ with open('LICENSE') as f:
     license = f.read()
 
 setup(
-    name='DeCluster',
+    name='DeclarativeClusterMind',
     version='1.0',
-    packages=['ClusterMind', 'DeclareTrees', 'SoundDeclare'],
-    url='https://github.com/Oneiroe/DeCluster',
+    packages=['DeclarativeClusterMind'],
+    url='https://github.com/Oneiroe/DeclarativeClusterMind',
     license=license,
     author='Alessio Cecconi',
     author_email='alessio.cecconi.1991@gmail.com',

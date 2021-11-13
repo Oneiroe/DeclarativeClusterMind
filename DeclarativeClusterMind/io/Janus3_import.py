@@ -1,3 +1,5 @@
+""" Import Janus v2.X measurement results """
+
 import csv
 
 import numpy as np

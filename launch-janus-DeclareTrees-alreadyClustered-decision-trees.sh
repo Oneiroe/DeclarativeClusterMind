@@ -107,7 +107,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
     if test -f "${CONSTRAINTS_TEMPLATE_BLACKLIST}"; then
-    python3 pySupport/filter_json_model.py ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
+    python3 -m DeclarativeClusterMind.utils.filter_json_model ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
     fi
 #    # Simplify model, i.e., remove redundant constraints
 #    echo "################################ SIMPLIFICATION"
@@ -116,7 +116,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 done
 
 ## merge process models
-python3 -m ClusterMind.utils.merge_models $PROCESSED_DATA_FOLDER "_model.json" ${MODEL}
+python3 -m DeclarativeClusterMind.utils.merge_models $PROCESSED_DATA_FOLDER "_model.json" ${MODEL}
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -142,7 +142,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 done
 
 # Retrieve measure for trace decision tree
-python3 -m ClusterMind.utils.merge_logs $MERGED_LOG $PROCESSED_DATA_FOLDER"/"*.xes
+python3 -m DeclarativeClusterMind.utils.merge_logs $MERGED_LOG $PROCESSED_DATA_FOLDER"/"*.xes
 echo "################################ MEASURE"
 if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
   echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
@@ -158,9 +158,9 @@ else
 fi
 
 # merge results
-python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
-python3 -m ClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
-python3 -m ClusteringEvaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER
+python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
+python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
+python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER
 
 cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
@@ -174,7 +174,7 @@ fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclareTrees.declare_trees_for_clusters \
+python3 -m DeclarativeClusterMind.declare_trees.declare_trees_for_clusters \
   $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   $CONSTRAINTS_THRESHOLD \
   $RESULT_DECLARE_TREE \
@@ -183,13 +183,13 @@ python3 -m DeclareTrees.declare_trees_for_clusters \
   $BRANCHING_ORDER_DECREASING_FLAG
 
 echo "################################ DECISION TREES clusters"
-python3 -m DeclareTrees.decision_trees_for_clustered_logs \
+python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clustered_logs \
   ${RESULTS_FOLDER}"/clusters-labels.csv" \
   ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
   0
 
 echo "################################ DECISION TREES traces"
-python3 -m DeclareTrees.decision_trees_for_clusters \
+python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
   ${RESULTS_FOLDER}"/decision_tree_traces.dot" \

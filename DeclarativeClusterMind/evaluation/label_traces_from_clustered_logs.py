@@ -1,7 +1,7 @@
 import os
 import sys
 
-from ClusteringEvaluation.utils import load_clusters_logs_from_folder, export_traces_clusters_labels
+from DeclarativeClusterMind.evaluation.utils import load_clusters_logs_from_folder, export_traces_clusters_labels
 
 
 def export_traces_clusters_labels_from_logs(folder, name="traces-labels.csv"):

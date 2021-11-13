@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.cm as cm
 
 
-# import ClusterMind.cm_clustering as cm
+# import DeclarativeClusterMind.cm_clustering as cm
 
 
 def compute_silhouette(log_input_2D, traces_clusters_labels):
@@ -181,7 +181,7 @@ def aggregate_f1_results(base_result_folder, output_file_path):
 
 
 if __name__ == '__main__':
-    result_path = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS"
+    result_path = "/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS"
     out_file = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/f1-score-aggregated.csv"
 
     aggregate_f1_results(result_path, out_file)

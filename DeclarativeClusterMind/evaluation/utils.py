@@ -106,9 +106,9 @@ def log_to_2d_array(log):
             nLog[i] += [log[i][j]['concept:name']]
 
 # if __name__ == '__main__':
-#     log = "/home/alessio/Data/Phd/Research/ClusterMind/Code-ClusterMind/input/SEPSIS-log.xes"
-#     cotradict = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/clusters.xls Fri Nov 2021 15.58.xls"
-#     labels = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/sepsis_labels.csv"
-#     out_folder = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/"
+#     log = "/home/alessio/Data/Phd/Research/DeclarativeClusterMind/Code-DeclarativeClusterMind/input/SEPSIS-log.xes"
+#     cotradict = "/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/clusters.xls Fri Nov 2021 15.58.xls"
+#     labels = "/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/sepsis_labels.csv"
+#     out_folder = "/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/CoTraDic/"
 #
 #     load_clusters_logs_from_indices_file(log, labels, out_folder)

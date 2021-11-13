@@ -4,10 +4,10 @@ import csv
 from collections import Counter
 import datetime
 
-# import ClusterMind.IO.SJ2T_import as cmio
+# import DeclarativeClusterMind.IO.SJ2T_import as cmio
 
 
-import ClusterMind.IO.J3Tree_import as j3io
+import DeclarativeClusterMind.io.Janus3_import as j3io
 
 import pm4py as pm
 from pm4py.objects.log.obj import EventLog
@@ -1206,4 +1206,4 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
 
 
 if __name__ == '__main__':
-    print("Use ClusterMind.ui.py to launch the script via CLI/GUI")
+    print("Use DeclarativeClusterMind.ui_clustering.py to launch the script via CLI/GUI")
