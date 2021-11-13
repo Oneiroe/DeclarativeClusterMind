@@ -53,8 +53,8 @@ mkdir -p $EXPERIMENT_NAME $MERGED_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DA
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.9
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
-RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
-BRANCHING_POLICY="dynamic"
+BRANCHING_POLICY="variance" # "frequency" "dynamic" "variance"
+RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-"${BRANCHING_POLICY}".dot"
 MINIMIZATION_FLAG="True"
 BRANCHING_ORDER_DECREASING_FLAG="True"
 #SPLIT_POLICY="mixed"
@@ -100,17 +100,17 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   CURRENT_MODEL=${INPUT_LOG}"_model.json"
   if test -f "${CURRENT_MODEL}"; then
     echo "$FILE already exists."
-
   else
-#    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${CURRENT_MODEL}
-    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
+    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${CURRENT_MODEL}
+#    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
     #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
+    if test -f "${CONSTRAINTS_TEMPLATE_BLACKLIST}"; then
     python3 pySupport/filter_json_model.py ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
-
+    fi
 #    # Simplify model, i.e., remove redundant constraints
-    echo "################################ SIMPLIFICATION"
+#    echo "################################ SIMPLIFICATION"
 #    java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $CURRENT_MODEL -iME $MODEL_ENCODING -oJSON $CURRENT_MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
   fi
 done
@@ -129,7 +129,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   if test -f $TEMP_OUT_MESURES_FILE; then
     echo "${TEMP_OUT_MESURES_FILE} already exists."
   else
-    java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence --no-screen-print-out
+    java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence 
   fi
   #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
@@ -162,7 +162,7 @@ python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER 
 python3 -m ClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
 python3 -m ClusteringEvaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER
 
-cp ${PROCESSED_DATA_FOLDER}"/traces-labels.csv" $RESULTS_FOLDER"/traces-labels.csv"
+cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
 cp ${PROCESSED_DATA_FOLDER}"/clusters-labels.csv" $RESULTS_FOLDER"/clusters-labels.csv"
@@ -178,7 +178,7 @@ python3 -m DeclareTrees.declare_trees_for_clusters \
   $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   $CONSTRAINTS_THRESHOLD \
   $RESULT_DECLARE_TREE \
-  $BRANCHING_POLICY \
+  "variance" \
   $MINIMIZATION_FLAG \
   $BRANCHING_ORDER_DECREASING_FLAG
 

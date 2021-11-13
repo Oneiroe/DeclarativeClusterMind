@@ -22,8 +22,9 @@ LOG_NAME="SEPSIS"
 # "BPIC15_1f"
 # "BPIC15_f"
 # "BPIC17_f"
+# "WSVX"
 
-CLUSTERING_POLICY="performances"
+CLUSTERING_POLICY="rules"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
@@ -50,7 +51,7 @@ mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DAT
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="optics"
+CLUSTERING_ALGORITHM="kmeans"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2
@@ -69,13 +70,13 @@ VISUALIZATION_FLAG="-vf"
 #APPLY_PCA_FLAG="True"
 APPLY_PCA_FLAG="-pca"
 #APPLY_PCA_FLAG=""
-CLUSTERS_NUMBER=10
+CLUSTERS_NUMBER=5
 
 # DECLRE-Tree
 CONSTRAINTS_THRESHOLD=0.8
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
-RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree.dot"
-BRANCHING_POLICY="dynamic"
+BRANCHING_POLICY="variance" # "frequency" "dynamic" "variance"
+RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-"${BRANCHING_POLICY}".dot"
 MINIMIZATION_FLAG="True"
 BRANCHING_ORDER_DECREASING_FLAG="True"
 #SPLIT_POLICY="mixed"
@@ -93,7 +94,8 @@ LOG_ENCODING="xes"
 # Discovery & Measurements
 SUPPORT=0.0
 CONFIDENCE=0.9
-MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"]-SIMPLIFIED.json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ABSENCE].json"
@@ -153,7 +155,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   echo $INPUT_LOG
   OUTPUT_CHECK_CSV="${INPUT_LOG}""-output.csv"
   OUTPUT_CHECK_JSON="${INPUT_LOG}""-output.json"
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence --no-screen-print-out
+  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence 
   #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
   #  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures
@@ -166,10 +168,12 @@ done
 
 # merge results
 python3 -m ClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
+python3 -m ClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
 
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
-cp ${PROCESSED_DATA_FOLDER}/*labels.csv $RESULTS_FOLDER"/traces-labels.csv"
+cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
+cp ${PROCESSED_DATA_FOLDER}"/clusters-labels.csv" $RESULTS_FOLDER"/clusters-labels.csv"
 cp ${PROCESSED_DATA_FOLDER}/performances_boxplot* $RESULTS_FOLDER
 cp ${PROCESSED_DATA_FOLDER}/silhouette* $RESULTS_FOLDER
 if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
@@ -180,10 +184,16 @@ fi
 echo "################################ DECLARE TREES"
 python3 -m DeclareTrees.declare_trees_for_clusters $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $CONSTRAINTS_THRESHOLD $RESULT_DECLARE_TREE $BRANCHING_POLICY $MINIMIZATION_FLAG $BRANCHING_ORDER_DECREASING_FLAG
 
-echo "################################ DECISION TREES"
+echo "################################ DECISION TREES clusters"
+python3 -m DeclareTrees.decision_trees_for_clustered_logs \
+  ${RESULTS_FOLDER}"/clusters-labels.csv" \
+  ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
+  0
+
+echo "################################ DECISION TREES traces"
 python3 -m DeclareTrees.decision_trees_for_clusters \
   ${RESULTS_FOLDER}"/traces-labels.csv" \
   "$OUTPUT_TRACE_MEASURES_CSV" \
-  ${RESULTS_FOLDER}"/decision_tree.dot" \
+  ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
   1 \
   ${SPLIT_POLICY}
