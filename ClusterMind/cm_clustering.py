@@ -1154,25 +1154,29 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print("Attributes: " + str(attributes_num))
     print(attributes_names)
 
-    data_performances = [[
-        (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
-        len(trace),
-        len(set(e['concept:name'] for e in trace))
-    ] for trace in log]
-    performances_names = [
-        "case-duration",
-        "case-length",
-        "case-unique-tasks"
-    ]
-    # 1-hot encoding
-    input2D_performances = pd.DataFrame(data_performances, columns=performances_names)
+    # data_performances = [[
+    #     (trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds(),
+    #     len(trace),
+    #     len(set(e['concept:name'] for e in trace))
+    # ] for trace in log]
+    # performances_names = [
+    #     "case-duration",
+    #     "case-length",
+    #     "case-unique-tasks"
+    # ]
+    # # 1-hot encoding
+    # input2D_performances = pd.DataFrame(data_performances, columns=performances_names)
 
-    input2D = pd.concat([input2D_rules, input2D_attributes, input2D_performances], axis=1)
-    features_names = np.concatenate([constraints_names, attributes_names, performances_names])
+    # input2D = pd.concat([input2D_rules, input2D_attributes, input2D_performances], axis=1)
+    input2D = pd.concat([input2D_rules, input2D_attributes], axis=1)
+    # features_names = np.concatenate([constraints_names, attributes_names, performances_names])
+    features_names = np.concatenate([constraints_names, attributes_names])
     features_num = features_names.shape[0]
 
     print(
-        f"FEATURES  rules:{len(constraints_names)} attributes:{len(attributes_names)} performances:{len(performances_names)}")
+        # f"FEATURES  rules:{len(constraints_names)} attributes:{len(attributes_names)} performances:{len(performances_names)}"
+        f"FEATURES  rules:{len(constraints_names)} attributes:{len(attributes_names)}"
+    )
 
     # Clean NaN and infinity
     input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
