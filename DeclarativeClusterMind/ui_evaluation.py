@@ -24,7 +24,7 @@ def main():
                                widget='DirChooser', required=True)
 
     parent_parser.add_argument('-o', '--output-file', help='Path to file where to save the output', type=str,
-                               widget='FileChooser', required=True)
+                               widget='FileSaver', required=True)
 
     parser = GooeyParser(
         description="evaluation of clustering results independent form the techniques used. It takes in input only the resulting clustered event logs.")

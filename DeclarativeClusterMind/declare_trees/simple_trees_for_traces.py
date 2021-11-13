@@ -1,8 +1,9 @@
 import sys
 import DeclarativeClusterMind.io.SJ2T_import as cmio
-from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree
-from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_dynamic
-from DeclarativeClusterMind.declare_trees.declare_trees import build_declare_tree_variance
+from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_static
+from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_dynamic
+from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_variance
+
 
 if __name__ == '__main__':
     print(sys.argv)
@@ -19,7 +20,7 @@ if __name__ == '__main__':
 
     # Declare tree
     if branching_policy == "frequency":
-        build_declare_tree(preprocessed_file, constraints_threshold, output_file, minimization_flag, reverse_flag)
+        build_declare_tree_static(preprocessed_file, constraints_threshold, output_file, minimization_flag, reverse_flag)
     elif branching_policy == "dynamic":
         build_declare_tree_dynamic(preprocessed_file, constraints_threshold, output_file, minimization_flag,
                                    reverse_flag)

@@ -6,6 +6,8 @@
 ##################################################################
 # PARAMETERS
 ##################################################################
+WORKING_DIR="/home/alessio/Data/Phd/my_code/ClusterMind"
+cd $WORKING_DIR
 
 # Janus main classes
 LOG_MAINCLASS="minerful.MinerFulLogMakerStarter"
@@ -51,12 +53,17 @@ RESULTS_FOLDER=$EXPERIMENT_NAME"/3-results"
 mkdir -p $EXPERIMENT_NAME $MERGED_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DATA_FOLDER $RESULTS_FOLDER
 
 # DECLRE-Tree
-CONSTRAINTS_THRESHOLD=0.9
+CONSTRAINTS_THRESHOLD=0.95
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
-BRANCHING_POLICY="variance" # "frequency" "dynamic" "variance"
+BRANCHING_POLICY="dynamic-variance" # "static-frequency" "dynamic-frequency" "dynamic-variance"
 RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-"${BRANCHING_POLICY}".dot"
-MINIMIZATION_FLAG="True"
-BRANCHING_ORDER_DECREASING_FLAG="True"
+#MINIMIZATION_FLAG="True"
+MINIMIZATION_FLAG="-min"
+#MINIMIZATION_FLAG=""
+#BRANCHING_ORDER_DECREASING_FLAG="True"
+BRANCHING_ORDER_DECREASING_FLAG="-decreasing"
+#BRANCHING_ORDER_DECREASING_FLAG=""
+
 #SPLIT_POLICY="mixed"
 ## 'rules'
 ## 'attributes'
@@ -174,24 +181,24 @@ fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclarativeClusterMind.declare_trees.declare_trees_for_clusters \
-  $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  $CONSTRAINTS_THRESHOLD \
-  $RESULT_DECLARE_TREE \
-  "variance" \
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
+  -o $RESULT_DECLARE_TREE \
+  -t $CONSTRAINTS_THRESHOLD \
+  -p $BRANCHING_POLICY \
   $MINIMIZATION_FLAG \
   $BRANCHING_ORDER_DECREASING_FLAG
 
 echo "################################ DECISION TREES clusters"
-python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clustered_logs \
-  ${RESULTS_FOLDER}"/clusters-labels.csv" \
-  ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
-  0
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters\
+  -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
+  -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
+  -fi 0
 
 echo "################################ DECISION TREES traces"
-python3 -m DeclarativeClusterMind.declare_trees.decision_trees_for_clusters \
-  ${RESULTS_FOLDER}"/traces-labels.csv" \
-  "$OUTPUT_TRACE_MEASURES_CSV" \
-  ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
-  1 \
-  ${SPLIT_POLICY}
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-traces-to-clusters\
+  -i ${RESULTS_FOLDER}"/traces-labels.csv" \
+  -o ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
+  -fi 1 \
+  -m "$OUTPUT_TRACE_MEASURES_CSV" \
+  -p ${SPLIT_POLICY}
