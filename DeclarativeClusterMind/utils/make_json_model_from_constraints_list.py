@@ -63,10 +63,10 @@ WARNING: the measures associate to each constraints are set by default to 1
                             "interestFactor": 1.0
                         }
                     ]
-            data["tasks"] = list(data["tasks"])
+            data["tasks"] = sorted(list(data["tasks"]))
 
             print("Serializing JSON...")
-            json.dump(data, json_file)
+            json.dump(data, json_file, indent=4)
 
 
 if __name__ == '__main__':

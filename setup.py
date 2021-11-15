@@ -10,11 +10,11 @@ setup(
     name='DeclarativeClusterMind',
     version='1.0',
     packages=['DeclarativeClusterMind'],
-    url='https://github.com/Oneiroe/DeclarativeClusterMind',
+    url='https://github.com/Oneiroe/ClusterMind',
     license=license,
     author='Alessio Cecconi',
     author_email='alessio.cecconi.1991@gmail.com',
-    description='Trace Cluering based on  Logic Rules',
+    description='Trace Clustering based on Declarative Logic Rules',
     long_description=readme,
     classifiers=[
         # How mature is this project? Common values are
@@ -34,5 +34,5 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords='trace clustering declare declarative rules temporal logic',
+    keywords='trace clustering declare declarative rules temporal logic decision trees',
 )
