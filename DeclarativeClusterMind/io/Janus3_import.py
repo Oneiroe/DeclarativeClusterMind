@@ -73,7 +73,7 @@ def retrieve_trace_measures_metadata(input_file_path: str):
         print("File extension not recognized for Janus Results")
 
 
-def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_path, measure="Confidence"):
+def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_path=None, measure="Confidence"):
     """
     From the trace measures, given a specific measure, transpose the results for that one measure for each trace,
     i.e. a matrix where the rows are the constraints and the columns are the traces, and
@@ -113,12 +113,13 @@ def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_
         for trace in temp_res[list(temp_res.keys())[0]].keys():
             header += [trace]
 
-        with open(output_path, 'w') as out_file:
-            writer = csv.DictWriter(out_file, fieldnames=header, delimiter=';')
-            writer.writeheader()
-            for constraint in temp_res:
-                temp_res[constraint].update({"Constraint": constraint})
-                writer.writerow(temp_res[constraint])
+        if output_path is not None:
+            with open(output_path, 'w') as out_file:
+                writer = csv.DictWriter(out_file, fieldnames=header, delimiter=';')
+                writer.writeheader()
+                for constraint in temp_res:
+                    temp_res[constraint].update({"Constraint": constraint})
+                    writer.writerow(temp_res[constraint])
     return featured_data, features_names
 
 

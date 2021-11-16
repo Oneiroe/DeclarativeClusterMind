@@ -20,6 +20,7 @@ from gooey import Gooey, GooeyParser
 
 from DeclarativeClusterMind.declare_trees.decision_trees import *
 from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_static, build_declare_tree_dynamic
+import DeclarativeClusterMind.io.Janus3_import as j3io
 
 
 @Gooey(
@@ -123,14 +124,43 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> SIMPLE TREE TRACES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # WIP
-    # parser_simple_tree_traces = subparsers.add_parser(
-    #     "simple-tree-traces",
-    #     description="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
-    #     help="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
-    #     parents=[parent_parser])
+    parser_simple_tree_traces = subparsers.add_parser(
+        "simple-tree-traces",
+        description="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
+        help="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
+        parents=[parent_parser])
+    parser_simple_tree_traces.add_argument(
+        '-t', '--constraints-threshold',
+        help='Measure threshold where to split the node',
+        type=float,
+        widget='DecimalField', default=0.95
+        # , gooey_options={'min': 0.0, 'max': 1.0}
+    )
+    parser_simple_tree_traces.add_argument(
+        '-p', '--branching-policy',
+        help='Policy for splitting the nodes of the tree',
+        type=str, widget='Dropdown',
+        choices=['static-frequency',
+                 'dynamic-frequency',
+                 'dynamic-variance'],
+        default='dynamic-variance')
+    parser_simple_tree_traces.add_argument(
+        '-decreasing', '--decreasing-order',
+        help='Use a decreasing order to select the rule given the chosen branching policy measure, ascending otherwise',
+        action="store_true", widget='BlockCheckbox')
+    parser_simple_tree_traces.add_argument(
+        '-min', '--minimize-tree',
+        help='Flag to enable the minimization of the tree: collapsing of singles choice transitions',
+        action="store_true", widget='BlockCheckbox')
+    parser_simple_tree_traces.add_argument(
+        '-mls', '--min-leaf-size',
+        help='Minimum number of elements to consider a node a leaf',
+        type=float,
+        widget='IntegerField', default=0
+    )
 
-    # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     args = parser.parse_args()
     print(args)
@@ -144,11 +174,9 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
 
     os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
-    if tree_technique == 'simple-tree-traces':
-        print("WARNING! Legacy script still using SJ2T measures")
-        pass
-
-    elif tree_technique == 'simple-tree-logs-to-clusters':
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    if tree_technique == 'simple-tree-logs-to-clusters':
         branching_policy = args.branching_policy
         if branching_policy == "static-frequency":
             build_declare_tree_static(args.input_featured_data,
@@ -173,7 +201,38 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         else:
             print(
                 "Branching policy not recognized. Supported policies: [static-frequency, dynamic-frequency, dynamic-variance] ")
-
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    elif tree_technique == 'simple-tree-traces':
+        branching_policy = args.branching_policy
+        # Pre-prcessing
+        temp_transposed_trace_measures_file = os.path.join(os.path.dirname(args.output_file), "focus.csv")
+        if not os.path.exists(temp_transposed_trace_measures_file):
+            print("Transposing data...")
+            j3io.extract_detailed_trace_perspective_csv(args.input_featured_data,
+                                                        temp_transposed_trace_measures_file,
+                                                        measure="Confidence")
+        else:
+            print("Transposed data already exists")
+        if branching_policy == "static-frequency":
+            build_declare_tree_static(temp_transposed_trace_measures_file,
+                                      args.constraints_threshold,
+                                      args.output_file,
+                                      args.minimize_tree,
+                                      args.decreasing_order)
+        elif branching_policy == "dynamic-frequency" or branching_policy == "dynamic-variance":
+            build_declare_tree_dynamic(temp_transposed_trace_measures_file,
+                                       args.constraints_threshold,
+                                       branching_policy,
+                                       args.output_file,
+                                       args.minimize_tree,
+                                       args.decreasing_order,
+                                       args.min_leaf_size)
+        else:
+            print(
+                "Branching policy not recognized. Supported policies: [static-frequency, dynamic-frequency, dynamic-variance] ")
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elif tree_technique == 'decision-tree-traces-to-clusters':
         split_policy = args.split_perspective
         focussed_csv = os.path.join(os.path.dirname(args.output_file), "focus.csv")
@@ -214,7 +273,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         else:
             print("ERROR: Decision tree split policy not recognized")
         retrieve_decision_tree(featured_data, labels, args.output_file, features_names, selected_feature_name)
-
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elif tree_technique == 'decision-tree-logs-to-clusters':
         featured_data, labels, features_names, selected_feature_name = import_log_labels_rules(
             args.input_featured_data,

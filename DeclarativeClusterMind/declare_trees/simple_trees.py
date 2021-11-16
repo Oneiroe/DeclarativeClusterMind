@@ -12,6 +12,7 @@ Policies supported:
 
 import csv
 import math
+import os
 import statistics
 from random import random
 
@@ -376,7 +377,10 @@ def build_declare_tree_dynamic(clusters_file,
                                constraint_measure_threshold,
                                branching_policy,
                                output_file,
-                               minimize=True, reverse=True, min_leaf_size=0):
+                               minimize=True,
+                               reverse=True,
+                               min_leaf_size=0,
+                               grace_percent=0.02):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
@@ -387,6 +391,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     :param reverse: decreasing order if true
     :param minimize:
     :param min_leaf_size: if a node has less then or an equal amount of elements in it, then it is considered a leaf
+    :param grace_percent:
     :return:
     """
     print("Data pre processing...")
@@ -421,7 +426,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                     clusters_table, leaf.clusters, leaf.used_constraints, reverse)
             else:  # elif branching_policy == "dynamic-variance":
                 leaf.constraint, leaf.threshold = get_most_variant_constraint(
-                    clusters_table, leaf.clusters, leaf.used_constraints, reverse)
+                    clusters_table, leaf.clusters, leaf.used_constraints, reverse, grace_percent)
                 # new threshold to divide the clusters, not on their absolute adherence to the constraint, but to their relative difference
             for cluster_in_node in leaf.clusters:
                 leaf.insert_child(cluster_in_node, clusters_table[constraints_indices[leaf.constraint]][
@@ -455,44 +460,87 @@ Constraints are reordered in each sub-branch according to the frequency in the r
 
 def split_log(log, clusters):
     """
-    WIP
-    Split the log into sub-logs according to the clusters, returns the list of logs
+    Split the log into sub-logs according to the simple tree clusters nodes, returns the list of logs and trace labels
     :param log:
     :param clusters:
     """
-    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
-    # sub_logs = list(range(n_clusters))
-    sub_logs = dict.fromkeys(set(clusters.labels_), [])
+    print(f"number of clusters : {len(clusters)}")
+    traces_labels = []
+    result_logs = {}
+    clusters_names = {}
     # initialize sublogs with original log properties
     # for i in range(n_clusters):
-    for i in set(clusters.labels_):
+    for cluster_index, cluster in enumerate(clusters):
         sub_log = EventLog()
         sub_log._attributes = log.attributes
         sub_log._classifiers = log.classifiers
         sub_log._extensions = log.extensions
         sub_log._omni = log.omni_present
-        sub_logs[i] = sub_log
-    trace_index = 0
+        result_logs[f"Cluster_{cluster_index}"] = sub_log
+        clusters_names[cluster] = f"Cluster_{cluster_index}"
+
     # put traces in sub-logs
-    for trace in log:
-        sub_logs[clusters.labels_[trace_index]].append(trace)
-        trace_index += 1
-    return sub_logs
+    for trace_index, trace in enumerate(log):
+        for cluster in clusters:
+            if f'T{trace_index}' in cluster.clusters:
+                current_cluster = clusters_names[cluster]
+        result_logs[current_cluster].append(trace)
+        traces_labels += [current_cluster]
+
+    return result_logs, traces_labels
 
 
-def build_clusters_from_branches(tree_root, original_log_file, output_folder):
+def get_cluster_leaves(tree_root):
     """
-    WIP
+Returns the leaves of a tree
+    :param tree_root:
+    :return:
+    """
+    clusters = set()
+    open_nodes = set()
+    open_nodes.add(tree_root)
+    while len(open_nodes) > 0:
+        new_nodes = set()
+        for node in open_nodes:
+            is_leaf = True
+            if node.ok:
+                new_nodes.add(node.ok)
+                is_leaf = False
+            if node.nan:
+                new_nodes.add(node.nan)
+                is_leaf = False
+            if node.nok:
+                new_nodes.add(node.nok)
+                is_leaf = False
+            if is_leaf:
+                clusters.add(node)
+        open_nodes = new_nodes
+    return clusters
+
+
+def build_clusters_from_traces_simple_tree(tree_root, original_log_file, output_folder):
+    """
 It build clusters sub-logs from the leaves of the tree
+
+    :param output_folder:
+    :param original_log_file:
     :param tree_root:
     """
     # Define clusters
-    clusters = {}
+    clusters = get_cluster_leaves(tree_root)
     #
     log = pm.read_xes(original_log_file)
-    logs = split_log(log, clusters)
+    clusters_logs, traces_labels = split_log(log, clusters)
     # export clusters logs to disk
-    for cluster_index in logs:
-        xes_exporter.apply(logs[cluster_index],
-                           output_folder + log.attributes['concept:name'] + '_cluster_' + str(
-                               cluster_index) + '.xes')
+    for cluster in clusters_logs:
+        xes_exporter.apply(clusters_logs[cluster],
+                           os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster}.xes"))
+
+    # export traces labels
+    with open(os.path.join(output_folder, "tree-traces-labels.csv"), 'w') as label_file:
+        header = ["TRACE", "CLUSTER"]
+        writer = csv.writer(label_file, delimiter=';')
+        writer.writerow(header)
+        writer.writerows(enumerate(traces_labels))
+
+    # print tree with clusters
