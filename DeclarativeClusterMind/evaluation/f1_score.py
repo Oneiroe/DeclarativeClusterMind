@@ -1,25 +1,15 @@
 import csv
 import os
-import sys
 
 import pm4py as pm
-from matplotlib import pyplot as plt
-from sklearn.metrics import silhouette_score, silhouette_samples
-import utils
-import numpy as np
-import matplotlib.cm as cm
+
+import plotly.express as px
+import pandas as pd
 
 
-# import DeclarativeClusterMind.cm_clustering as cm
-
-
-def compute_silhouette(log_input_2D, traces_clusters_labels):
-    mean_silhouette = silhouette_score(log_input_2D, traces_clusters_labels)
-    print(f'mean Silhouette Coefficient of all samples: {mean_silhouette}')
-    return mean_silhouette
-
-
-def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
+def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path,
+               discovery_algorithm="heuristics",
+               fitness_precision_algorithm="token"):
     """
     Compute the F1 score, along with the fitness and precision, of all the clusters.
     The details are stored in the desired output file and the average is returned in output.
@@ -28,6 +18,8 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
     :param traces_clusters_labels: list of clusters labels, where each index is the index of the trace and the value is the associated cluster label
     :param output_csv_file_path:
     :return: fitness_avg, precision_avg, f1_avg
+    :param discovery_algorithm: [heuristics, inductive]
+    :param fitness_precision_algorithm:
     """
     header = ['CLUSTER', 'TRACES_NUM', 'FITNESS', 'PRECISION', 'F1']
 
@@ -52,19 +44,26 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
             tot_taces += traces_num
 
             # Model discovery
-            petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
-            # petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
-
-            # FITNESS
-            # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
-            fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
-                                                                  final_marking)
-            # fitness = fitness_align_dictio['averageFitness']
-            fitness = fitness_replay_dictio['log_fitness']
-
-            # PRECISION:alignment vs token replay
-            # precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
-            precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
+            if discovery_algorithm == 'heuristics':
+                petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
+            elif discovery_algorithm == 'inductive':
+                petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
+            else:
+                print(f"ERROR: discovery algorithm not recognized: {discovery_algorithm}")
+                exit(1)
+            # FITNESS & PRECISION
+            if fitness_precision_algorithm == 'token':
+                fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
+                                                                      final_marking)
+                fitness = fitness_replay_dictio['log_fitness']
+                precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
+            elif fitness_precision_algorithm == 'alignments':
+                fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
+                fitness = fitness_align_dictio['averageFitness']
+                precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
+            else:
+                print(f"ERROR: fitness/precision algorithm not recognized: {fitness_precision_algorithm}")
+                exit(1)
 
             f1 = 2 * (precision * fitness) / (precision + fitness)
 
@@ -100,58 +99,21 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path):
     return fitness_avg, precision_avg, f1_avg
 
 
-def visualize_silhouette(input2D, traces_cluster_labels, silhouette_avg):
+def aggregate_f1_results(base_result_folder, output_file_path, plot_output_path=None):
     """
-Visualize the silhouette score of each cluster and trace
+Aggregate the results of different F1-score tests. It is used the WEIGHTED average foreach technique.
 
-    :param input2D:
-    :param silhouette_avg:
-    :param traces_cluster_labels:
+It is expected that:
+    - base_result_folder containing sub-folders containing f1-scores.
+    - the f1-scores results are CSV files with "f1" in the name
+
+The label for each entry-technique is given by the name of the sub-folder
+
+    :param base_result_folder:
+    :param output_file_path:
+    :param plot_output_path: if given, plot the result in this file as bar-plot
     """
-    sample_silhouette_values = silhouette_samples(input2D, traces_cluster_labels)
-    n_clusters = len(set(traces_cluster_labels))
-
-    fig, (ax1) = plt.subplots(1, 1)
-    fig.set_size_inches(18, 7)
-    ax1.set_xlim([-1, 1])
-    ax1.set_ylim([0, len(input2D) + (n_clusters + 1) * 10])
-
-    y_lower = 10
-    for i in sorted(set(traces_cluster_labels)):
-        # Aggregate the silhouette scores for samples belonging to
-        # cluster i, and sort them
-        ith_cluster_silhouette_values = sample_silhouette_values[traces_cluster_labels == i]
-
-        ith_cluster_silhouette_values.sort()
-
-        size_cluster_i = ith_cluster_silhouette_values.shape[0]
-        y_upper = y_lower + size_cluster_i
-
-        color = cm.nipy_spectral(float(i) / n_clusters)
-        ax1.fill_betweenx(np.arange(y_lower, y_upper),
-                          0, ith_cluster_silhouette_values,
-                          facecolor=color, edgecolor=color, alpha=0.7)
-
-        # Label the silhouette plots with their cluster numbers at the middle
-        ax1.text(-0.05, y_lower + 0.5 * size_cluster_i, str(i))
-
-        # Compute the new y_lower for next plot
-        y_lower = y_upper + 10  # 10 for the 0 samples
-
-    ax1.set_title("The silhouette plot for the various clusters.")
-    ax1.set_xlabel("The silhouette coefficient values")
-    ax1.set_ylabel("Cluster label")
-
-    # The vertical line for average silhouette score of all the values
-    ax1.axvline(x=silhouette_avg, color="red", linestyle="--")
-
-    ax1.set_yticks([])  # Clear the yaxis labels / ticks
-    ax1.set_xticks([-0.1, 0, 0.2, 0.4, 0.6, 0.8, 1])
-
-    plt.show()
-
-
-def aggregate_f1_results(base_result_folder, output_file_path):
+    print("Aggregating F1-scores results...")
     with open(output_file_path, 'w') as out_file:
         header = ['TECHNIQUE', 'CLUSTERS_NUM', 'FITNESS', 'PRECISION', 'F1']
         header_results = ['CLUSTER', 'TRACES_NUM', 'FITNESS', 'PRECISION', 'F1']
@@ -178,10 +140,54 @@ def aggregate_f1_results(base_result_folder, output_file_path):
                                 })
                                 continue
                             clusters_num += 1
+    if plot_output_path is not None:
+        visualize_bar_plot_aggregated_f1_scores(output_file_path, plot_output_path)
+
+
+def visualize_bar_plot_aggregated_f1_scores(aggregated_f1_csv_file_path,
+                                            ouput_graph_file_path,
+                                            popup_immediate_visualization=False):
+    """
+Plot a bar-plot for the aggregated results of the F1-scores
+    :param aggregated_f1_csv_file_path:
+    :param ouput_graph_file_path:
+    :param popup_immediate_visualization:
+    """
+    print("Plotting aggregated F1-scores results...")
+    data = pd.read_csv(aggregated_f1_csv_file_path, delimiter=';')
+    data = data.sort_values(by=['F1'])
+
+    colour_map = {}
+    for index, x in enumerate(data["CLUSTERS_NUM"].sort_values()):
+        if str(x) in colour_map:
+            continue
+        colour_map[str(x)] = px.colors.sequential.Plasma_r[index]
+
+    data["CLUSTERS_NUM"] = data["CLUSTERS_NUM"].astype(str)
+    fig = px.bar(data, x='TECHNIQUE', y='F1',
+                 text='F1',
+                 color='CLUSTERS_NUM',
+                 # color_discrete_sequence=px.colors.sequential.Plasma_r
+                 color_discrete_map=colour_map,
+                 )
+    # fig.update_layout(legend_traceorder="normal")
+    fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+
+    # BASE-LINE AT unclustered results
+    # fig.add_shape(  # add a horizontal "target" line
+    #     type="line", line_color="salmon", line_width=3, opacity=1, line_dash="dot",
+    #     x0=0, x1=1, xref="paper", y0=950, y1=950, yref="y"
+    # )
+
+    if popup_immediate_visualization:
+        fig.show()
+    fig.write_image(ouput_graph_file_path)
+    fig.write_html(f"{ouput_graph_file_path}.html")
 
 
 if __name__ == '__main__':
     result_path = "/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS"
-    out_file = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/f1-score-aggregated.csv"
-
-    aggregate_f1_results(result_path, out_file)
+    out_file_csv = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/f1-score_SEPSIS(copy).csv"
+    plot_path = "/home/alessio/Data/Phd/my_code/ClusterMind/Trace-Clustering-Competitors/TraCluSi/TraCluSi-executable/output/SEPSIS/plot.svg"
+    # aggregate_f1_results(result_path, out_file_csv)
+    visualize_bar_plot_aggregated_f1_scores(out_file_csv, plot_path, True)

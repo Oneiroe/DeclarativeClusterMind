@@ -89,16 +89,21 @@ def print_tree_graphviz(graph, node):
         this_node = graph.node(this_node_code, label=node.print_node_graphviz())
     else:
         this_node = graph.node(this_node_code, label=node.print_node_graphviz(), fillcolor="lightblue", style='filled')
+        # this_node = graph.node(this_node_code, label="Cluster-X", fillcolor="lightblue", style='filled')
 
     if node.ok:
         next_left = print_tree_graphviz(graph, node.ok)
-        graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
+        # graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
+        graph.edge(this_node_code, next_left, label=f">{round(node.threshold, 2)} [{len(node.ok.clusters)}]",
+                   color="green")
     if node.nan:
         next_center = print_tree_graphviz(graph, node.nan)
         graph.edge(this_node_code, next_center, label="NA [" + str(len(node.nan.clusters)) + "]", color="gray")
     if node.nok:
         next_right = print_tree_graphviz(graph, node.nok)
-        graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
+        # graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
+        graph.edge(this_node_code, next_right, label=f"<{round(node.threshold, 2)} [{len(node.nok.clusters)}]",
+                   color="red")
     return this_node_code
 
 
@@ -331,7 +336,7 @@ def get_most_common_constraint(cluster_table, clusters, used_constraints, revers
     return order_clusters_table(view, reverse)[1][0]
 
 
-def get_most_variant_constraint(cluster_table, clusters, used_constraints, reverse):
+def get_most_variant_constraint(cluster_table, clusters, used_constraints, reverse, grace_percent=0.02):
     view = []
     header = True
     for row in cluster_table:
@@ -340,34 +345,51 @@ def get_most_variant_constraint(cluster_table, clusters, used_constraints, rever
         view_row = [row[0]]
         for cluster_i in range(len(row)):
             if cluster_table[0][cluster_i] in clusters:
-                view_row += [row[cluster_i]]
-                if header or math.isnan(row[cluster_i]):
+                if header or not math.isnan(float(row[cluster_i])):
+                    view_row += [row[cluster_i]]
+                else:
+                    # view_row += [1.0]  # vacuous satisfaction
                     continue
+                    # used only to compute the variance, during the leaf assignment it is used its original NaN value
+
         if header:
             view_row += [row[-1]]
             header = False
         else:
-            view_row += [statistics.variance(view_row[1:])]
+            if len(view_row[1:]) == 0:
+                view_row += [0.0]
+            elif len(view_row[1:]) == 1:
+                view_row += [1.0]
+            else:
+                view_row += [statistics.variance(view_row[1:])]
         view += [view_row]
-    return order_clusters_table(view, reverse)[1][0]
+    result = order_clusters_table(view, reverse)
+    # the threshold is set to the average of the sample minus a grace percentage,
+    # in this way when the clusters became very near they are not separated for very small differences
+    if len(result[1][1:-1]) == 0:
+        return result[1][0], 0.0
+    else:
+        return result[1][0], (sum(result[1][1:-1]) / len(result[1][1:-1])) - grace_percent
 
 
 def build_declare_tree_dynamic(clusters_file,
                                constraint_measure_threshold,
                                branching_policy,
                                output_file,
-                               minimize=False, reverse=True):
+                               minimize=True, reverse=True, min_leaf_size=0):
     """
 Builds the DECLARE tree according to the aggregated result of the clusters.
 Constraints are reordered in each sub-branch according to the frequency in the remaining clusters.
-    :param reverse:
-    :param minimize:
     :param branching_policy:
     :param output_file:
     :param clusters_file:
     :param constraint_measure_threshold: threshold above which a constraint's measure is considered part of a cluster
+    :param reverse: decreasing order if true
+    :param minimize:
+    :param min_leaf_size: if a node has less then or an equal amount of elements in it, then it is considered a leaf
     :return:
     """
+    print("Data pre processing...")
     # Import initial data
     if branching_policy == "dynamic-frequency":
         clusters_table, clusters_indices, constraints_indices = get_clusters_table_sum(clusters_file)
@@ -376,6 +398,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     else:
         print(f"ERROR! Branching policy not recognized [{branching_policy}]")
         exit(1)
+    print("START Building dynamic simple tree")
     # root initialization
     result_tree = ClusterNode(threshold=constraint_measure_threshold)
     result_tree.clusters = set(clusters_table[0][1:-1])
@@ -384,17 +407,22 @@ Constraints are reordered in each sub-branch according to the frequency in the r
 
     # while splittable leaves
     while len(leaves) > 0:
+        print(f"Open leaves: {len(leaves)}")
         #   for branch
         new_leaves = set()
         for leaf in leaves:
-            if len(leaf.clusters) == 1 or len(leaf.used_constraints) == len(constraints_indices):
+            if len(leaf.clusters) == 1 or \
+                    len(leaf.used_constraints) == len(constraints_indices) or \
+                    leaf.threshold == 0.0 or \
+                    len(leaf.clusters) <= min_leaf_size:
                 continue
             if branching_policy == "dynamic-frequency":
                 leaf.constraint = get_most_common_constraint(
                     clusters_table, leaf.clusters, leaf.used_constraints, reverse)
             else:  # elif branching_policy == "dynamic-variance":
-                leaf.constraint = get_most_variant_constraint(
+                leaf.constraint, leaf.threshold = get_most_variant_constraint(
                     clusters_table, leaf.clusters, leaf.used_constraints, reverse)
+                # new threshold to divide the clusters, not on their absolute adherence to the constraint, but to their relative difference
             for cluster_in_node in leaf.clusters:
                 leaf.insert_child(cluster_in_node, clusters_table[constraints_indices[leaf.constraint]][
                     clusters_indices[cluster_in_node]])
@@ -411,10 +439,13 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                 leaf.nok.used_constraints.add(leaf.constraint)
                 new_leaves.add(leaf.nok)
         leaves = new_leaves
+    print("END Building dynamic simple tree")
 
     if minimize:
+        print("Minimizing tree...")
         minimize_tree(result_tree)
 
+    print("Graphviz output...")
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, result_tree)
     graph.render(filename=output_file)

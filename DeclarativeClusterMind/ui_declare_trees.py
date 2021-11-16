@@ -123,11 +123,11 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> SIMPLE TREE TRACES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # NOT YET UPDATED TO JANUS3!
+    # WIP
     # parser_simple_tree_traces = subparsers.add_parser(
     #     "simple-tree-traces",
-    #     description="simple declarative-rules-only decision tree guiding to traces differences",
-    #     help="simple declarative-rules-only decision tree guiding to traces differences",
+    #     description="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
+    #     help="simple declarative-rules-only decision tree guiding to traces differences (thus clusters)",
     #     parents=[parent_parser])
 
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
