@@ -18,11 +18,9 @@ JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
 JAVA_BIN="/home/alessio/Software/jdk/jdk-11.0.10/bin/java"
 DISCOVERY_JAR="/home/alessio/Data/Phd/code_3rd_party/MINERful/MINERful.jar"
-#DISCOVERY_JAR="MINERful.jar"
 DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
-DISCOVERY_SUPPORT=0.9   # support threshold used for the initial discovery of the constraints of the variances
+DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
-
 
 LOG_NAME="MANUAL"
 # "MANUAL"
@@ -56,7 +54,8 @@ mkdir -p $EXPERIMENT_NAME $MERGED_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DA
 CONSTRAINTS_THRESHOLD=0.95
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
 BRANCHING_POLICY="dynamic-variance" # "static-frequency" "dynamic-frequency" "dynamic-variance"
-RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-"${BRANCHING_POLICY}".dot"
+RESULT_DECLARE_TREE_TRACES=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-TRACES-"${BRANCHING_POLICY}".dot"
+RESULT_DECLARE_TREE_CLUSTERS=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-CLUSTERS-"${BRANCHING_POLICY}".dot"
 #MINIMIZATION_FLAG="True"
 MINIMIZATION_FLAG="-min"
 #MINIMIZATION_FLAG=""
@@ -72,7 +71,6 @@ BRANCHING_ORDER_DECREASING_FLAG="-decreasing"
 ## 'performances'
 
 # Input log
-#LOG_NAME="BPIC13"
 MERGED_LOG=$MERGED_FOLDER"/"$LOG_NAME"-merged-log.xes"
 LOG_ENCODING="xes"
 
@@ -110,15 +108,14 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   else
     java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${CURRENT_MODEL}
 #    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
-    #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
     if test -f "${CONSTRAINTS_TEMPLATE_BLACKLIST}"; then
-    python3 -m DeclarativeClusterMind.utils.filter_json_model ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
+      python3 -m DeclarativeClusterMind.utils.filter_json_model ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
     fi
-#    # Simplify model, i.e., remove redundant constraints
-#    echo "################################ SIMPLIFICATION"
-#    java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $CURRENT_MODEL -iME $MODEL_ENCODING -oJSON $CURRENT_MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+    #    # Simplify model, i.e., remove redundant constraints
+    #    echo "################################ SIMPLIFICATION"
+    #    java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $CURRENT_MODEL -iME $MODEL_ENCODING -oJSON $CURRENT_MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
   fi
 done
 
@@ -136,7 +133,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   if test -f $TEMP_OUT_MESURES_FILE; then
     echo "${TEMP_OUT_MESURES_FILE} already exists."
   else
-    java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence 
+    java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence
   fi
   #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
 
@@ -149,11 +146,16 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
 done
 
 # Retrieve measure for trace decision tree
-python3 -m DeclarativeClusterMind.utils.merge_logs $MERGED_LOG $PROCESSED_DATA_FOLDER"/"*.xes
+if test -f "${MERGED_LOG}"; then
+  echo "$MERGED_LOG already exists."
+else
+  python3 -m DeclarativeClusterMind.utils.merge_logs $MERGED_LOG $PROCESSED_DATA_FOLDER"/"*.xes
+fi
 echo "################################ MEASURE"
 if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
   echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
 else
+  # -Xmx12000m in case of extra memory required add this
   java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $MERGED_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip -measure "Confidence" -detailsLevel trace
 #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF $MERGED_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -oJSON $OUTPUT_CHECK_JSON -d none -nanLogSkip
 # 'Lift','Confidence','Relative Risk'
@@ -180,25 +182,42 @@ if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
 fi
 
 # Build decision-Tree
-echo "################################ DECLARE TREES"
+echo "################################ SIMPLE TREES Clusters"
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  -o $RESULT_DECLARE_TREE \
+  -o $RESULT_DECLARE_TREE_CLUSTERS"-Decreasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
   -p $BRANCHING_POLICY \
   $MINIMIZATION_FLAG \
-  $BRANCHING_ORDER_DECREASING_FLAG
+  -decreasing
+
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
+  -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
+  -t $CONSTRAINTS_THRESHOLD \
+  -p $BRANCHING_POLICY \
+  $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
   -fi 0
 
 echo "################################ DECISION TREES traces"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-traces-to-clusters\
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-traces-to-clusters \
   -i ${RESULTS_FOLDER}"/traces-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
   -fi 1 \
   -m "$OUTPUT_TRACE_MEASURES_CSV" \
   -p ${SPLIT_POLICY}
+
+echo "################################ SIMPLE TREES Traces"
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-traces \
+  -i ${OUTPUT_TRACE_MEASURES_CSV} \
+  -o $RESULT_DECLARE_TREE_TRACES \
+  -t $CONSTRAINTS_THRESHOLD \
+  -p $BRANCHING_POLICY \
+  $MINIMIZATION_FLAG \
+  $BRANCHING_ORDER_DECREASING_FLAG \
+  -mls 100

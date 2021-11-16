@@ -84,24 +84,28 @@ class ClusterNode:
             return "<" + str(self.clusters) + ">"
 
 
-def print_tree_graphviz(graph, node):
+def print_tree_graphviz(graph, node, aggregate=False):
     this_node_code = node.print_node_graphviz() + str(random())
     if node.constraint:
         this_node = graph.node(this_node_code, label=node.print_node_graphviz())
     else:
-        this_node = graph.node(this_node_code, label=node.print_node_graphviz(), fillcolor="lightblue", style='filled')
-        # this_node = graph.node(this_node_code, label="Cluster-X", fillcolor="lightblue", style='filled')
+        if aggregate:
+            this_node = graph.node(this_node_code, label=f"[{len(node.clusters)}]", fillcolor="lightblue",
+                                   style='filled')
+        else:
+            this_node = graph.node(this_node_code, label=node.print_node_graphviz(), fillcolor="lightblue",
+                                   style='filled')
 
     if node.ok:
-        next_left = print_tree_graphviz(graph, node.ok)
+        next_left = print_tree_graphviz(graph, node.ok, aggregate)
         # graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
         graph.edge(this_node_code, next_left, label=f">{round(node.threshold, 2)} [{len(node.ok.clusters)}]",
                    color="green")
     if node.nan:
-        next_center = print_tree_graphviz(graph, node.nan)
+        next_center = print_tree_graphviz(graph, node.nan, aggregate)
         graph.edge(this_node_code, next_center, label="NA [" + str(len(node.nan.clusters)) + "]", color="gray")
     if node.nok:
-        next_right = print_tree_graphviz(graph, node.nok)
+        next_right = print_tree_graphviz(graph, node.nok, aggregate)
         # graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
         graph.edge(this_node_code, next_right, label=f"<{round(node.threshold, 2)} [{len(node.nok.clusters)}]",
                    color="red")
@@ -403,7 +407,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
     else:
         print(f"ERROR! Branching policy not recognized [{branching_policy}]")
         exit(1)
-    print("START Building dynamic simple tree")
+    print("Building dynamic simple tree...")
     # root initialization
     result_tree = ClusterNode(threshold=constraint_measure_threshold)
     result_tree.clusters = set(clusters_table[0][1:-1])
@@ -412,7 +416,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
 
     # while splittable leaves
     while len(leaves) > 0:
-        print(f"Open leaves: {len(leaves)}")
+        print(f"\rOpen leaves: {len(leaves)} ", end='')
         #   for branch
         new_leaves = set()
         for leaf in leaves:
@@ -444,7 +448,7 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                 leaf.nok.used_constraints.add(leaf.constraint)
                 new_leaves.add(leaf.nok)
         leaves = new_leaves
-    print("END Building dynamic simple tree")
+    print("DONE")
 
     if minimize:
         print("Minimizing tree...")
@@ -452,25 +456,25 @@ Constraints are reordered in each sub-branch according to the frequency in the r
 
     print("Graphviz output...")
     graph = graphviz.Digraph(format='svg')
-    print_tree_graphviz(graph, result_tree)
+    print_tree_graphviz(graph, result_tree, min_leaf_size > 0.0)
     graph.render(filename=output_file)
 
     return result_tree
 
 
-def split_log(log, clusters):
+def split_log(log, clusters_nodes):
     """
     Split the log into sub-logs according to the simple tree clusters nodes, returns the list of logs and trace labels
     :param log:
-    :param clusters:
+    :param clusters_nodes:
     """
-    print(f"number of clusters : {len(clusters)}")
+    print(f"number of clusters : {len(clusters_nodes)}")
     traces_labels = []
     result_logs = {}
     clusters_names = {}
     # initialize sublogs with original log properties
     # for i in range(n_clusters):
-    for cluster_index, cluster in enumerate(clusters):
+    for cluster_index, cluster in enumerate(clusters_nodes):
         sub_log = EventLog()
         sub_log._attributes = log.attributes
         sub_log._classifiers = log.classifiers
@@ -481,7 +485,7 @@ def split_log(log, clusters):
 
     # put traces in sub-logs
     for trace_index, trace in enumerate(log):
-        for cluster in clusters:
+        for cluster in clusters_nodes:
             if f'T{trace_index}' in cluster.clusters:
                 current_cluster = clusters_names[cluster]
         result_logs[current_cluster].append(trace)
@@ -490,13 +494,13 @@ def split_log(log, clusters):
     return result_logs, traces_labels
 
 
-def get_cluster_leaves(tree_root):
+def get_tree_leaves(tree_root):
     """
 Returns the leaves of a tree
     :param tree_root:
     :return:
     """
-    clusters = set()
+    leaves = set()
     open_nodes = set()
     open_nodes.add(tree_root)
     while len(open_nodes) > 0:
@@ -513,9 +517,9 @@ Returns the leaves of a tree
                 new_nodes.add(node.nok)
                 is_leaf = False
             if is_leaf:
-                clusters.add(node)
+                leaves.add(node)
         open_nodes = new_nodes
-    return clusters
+    return leaves
 
 
 def build_clusters_from_traces_simple_tree(tree_root, original_log_file, output_folder):
@@ -527,10 +531,10 @@ It build clusters sub-logs from the leaves of the tree
     :param tree_root:
     """
     # Define clusters
-    clusters = get_cluster_leaves(tree_root)
+    clusters_nodes = get_tree_leaves(tree_root)
     #
     log = pm.read_xes(original_log_file)
-    clusters_logs, traces_labels = split_log(log, clusters)
+    clusters_logs, traces_labels = split_log(log, clusters_nodes)
     # export clusters logs to disk
     for cluster in clusters_logs:
         xes_exporter.apply(clusters_logs[cluster],
@@ -544,3 +548,6 @@ It build clusters sub-logs from the leaves of the tree
         writer.writerows(enumerate(traces_labels))
 
     # print tree with clusters
+    graph = graphviz.Digraph(format='svg')
+    print_tree_graphviz(graph, tree_root, True)
+    graph.render(filename=os.path.join(output_folder, "Clusters_tree.dot"))

@@ -78,7 +78,8 @@ CLUSTERS_NUMBER=5
 CONSTRAINTS_THRESHOLD=0.95
 PROCESSED_OUTPUT_CHECK_CSV=$PROCESSED_DATA_FOLDER"/"$LOG_NAME"-output.csv"
 BRANCHING_POLICY="dynamic-variance" # "static-frequency" "dynamic-frequency" "dynamic-variance"
-RESULT_DECLARE_TREE=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-"${BRANCHING_POLICY}".dot"
+RESULT_DECLARE_TREE_CLUSTERS=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-CLUSTERS-"${BRANCHING_POLICY}".dot"
+RESULT_DECLARE_TREE_TRACES=$RESULTS_FOLDER"/"$LOG_NAME"-DeclareTree-TRACES-"${BRANCHING_POLICY}".dot"
 #MINIMIZATION_FLAG="True"
 MINIMIZATION_FLAG="-min"
 #MINIMIZATION_FLAG=""
@@ -191,11 +192,18 @@ fi
 echo "################################ DECLARE TREES"
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  -o $RESULT_DECLARE_TREE \
+  -o $RESULT_DECLARE_TREE_CLUSTERS"-Decreasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
   -p $BRANCHING_POLICY \
   $MINIMIZATION_FLAG \
-  $BRANCHING_ORDER_DECREASING_FLAG
+  -decreasing
+
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
+  -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
+  -t $CONSTRAINTS_THRESHOLD \
+  -p $BRANCHING_POLICY \
+  $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES logs to clusters"
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters\
@@ -210,3 +218,14 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-
   -fi 1 \
   -m "$OUTPUT_TRACE_MEASURES_CSV" \
   -p ${SPLIT_POLICY}
+
+
+echo "################################ SIMPLE TREES Traces"
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-traces \
+  -i ${OUTPUT_TRACE_MEASURES_CSV} \
+  -o $RESULT_DECLARE_TREE_TRACES \
+  -t $CONSTRAINTS_THRESHOLD \
+  -p $BRANCHING_POLICY \
+  $MINIMIZATION_FLAG \
+  $BRANCHING_ORDER_DECREASING_FLAG \
+  -mls 100
