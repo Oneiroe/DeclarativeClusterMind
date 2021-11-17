@@ -32,34 +32,37 @@ Export in output the list of trace labels given a clustering
         csv_writer.writerows(enumerate(labels))
 
 
-def split_log_according_to_clusters(original_xes_log_path, traces_clusters, output_folder=None):
+def split_log_according_to_clusters(original_xes_log, traces_clusters_labels, output_folder=None):
     """
-Given an event log and the cluster indices for each of its traces, it is returned in output the list of singles XES logs for each cluster
-    :param original_xes_log_path:
-    :param traces_clusters: list of clusters labels, where each index is the index of the trace and the value is the associated cluster label
+Given an event log and the cluster indices for each of its traces,
+it is returned in output the list of singles XES logs for each cluster.
+
+    :param original_xes_log: xes event log reader (already loaded
+    :param traces_clusters_labels: list of clusters labels, where each index is the index of the trace and the value is the associated cluster label
     :param output_folder: optional, folder where to store the clusters event log
     """
-    original_log = pm.read_xes(original_xes_log_path)
-    labels = set(traces_clusters)
+    labels = set(traces_clusters_labels)
     sub_logs = dict.fromkeys(labels, [])
     # initialize sublogs with original log properties
-    # for i in range(n_clusters):
     for i in labels:
         sub_log = EventLog()
-        sub_log._attributes = original_log.attributes
-        sub_log._classifiers = original_log.classifiers
-        sub_log._extensions = original_log.extensions
-        sub_log._omni = original_log.omni_present
+        sub_log._attributes = original_xes_log.attributes
+        sub_log._classifiers = original_xes_log.classifiers
+        sub_log._extensions = original_xes_log.extensions
+        sub_log._omni = original_xes_log.omni_present
         sub_logs[i] = sub_log
     trace_index = 0
     # put traces in sub-logs
-    for trace in original_log:
-        sub_logs[traces_clusters[trace_index]].append(trace)
+    for trace in original_xes_log:
+        sub_logs[traces_clusters_labels[trace_index]].append(trace)
         trace_index += 1
 
     if output_folder is not None:
         for sub_log in sub_logs:
-            pm.write_xes(sub_logs[sub_log], os.path.join(output_folder, f"Cluster_{sub_log}.xes"))
+            pm.write_xes(sub_logs[sub_log],
+                         os.path.join(output_folder,
+                                      # f"Cluster_{sub_log}.xes")
+                                      f"{sub_logs[sub_log].attributes['concept:name']}_cluster_{sub_log}.xes"))
 
     return sub_logs
 
@@ -72,15 +75,16 @@ def load_clusters_logs_from_indices_file(original_log_path, trace_clusters_csv_p
     :param trace_clusters_csv_path: path to csv file containing the trace labels
     :param output_folder: optional, if provided the clusters logs are exported in output
     """
-    return split_log_according_to_clusters(original_log_path,
+    return split_log_according_to_clusters(pm.read_xes(original_log_path),
                                            import_traces_clusters_labels(trace_clusters_csv_path),
                                            output_folder)
 
 
-def load_clusters_logs_from_folder(folder_path):
+def load_clusters_logs_list_from_folder(folder_path):
     """
     Given a folder, it loads all the contained .xes logs.
     It is assumed the each logs belong to one cluster.
+
 
     :param folder_path: path to the folder containing the logs of the clusters
     :return: list of XES log parsers, list of names of the logs
@@ -98,12 +102,24 @@ def load_clusters_logs_from_folder(folder_path):
     return result, indices
 
 
-def log_to_2d_array(log):
-    nLog = []
-    for i in range(len(log)):
-        nLog += [[]]
-        for j in range(len(log[i])):
-            nLog[i] += [log[i][j]['concept:name']]
+def load_clusters_logs_map_from_folder(folder_path):
+    """
+    Given a folder, it loads all the contained .xes logs.
+    It is assumed the each logs belong to one cluster.
+    the output is a map for log_label:->log
+
+    :param folder_path: path to the folder containing the logs of the clusters
+    :return: list of XES log parsers, list of names of the logs
+    """
+    result = {}
+
+    counter = 0
+    for log_file in os.listdir(folder_path):
+        if log_file.endswith(".xes"):
+            counter += 1
+            result[log_file[:-4]]= pm.read_xes(os.path.join(folder_path, log_file))
+    print(f"Loaded {counter} clusters logs")
+    return result
 
 # if __name__ == '__main__':
 #     log = "/home/alessio/Data/Phd/Research/DeclarativeClusterMind/Code-DeclarativeClusterMind/input/SEPSIS-log.xes"

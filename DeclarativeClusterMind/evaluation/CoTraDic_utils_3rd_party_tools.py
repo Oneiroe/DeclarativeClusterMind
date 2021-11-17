@@ -4,6 +4,7 @@ import xlrd
 
 from DeclarativeClusterMind.evaluation.utils import export_traces_clusters_labels, \
     split_log_according_to_clusters
+import pm4py as pm
 
 
 def CoTraDic_import_clusters_indices(xls_file_path, output_csv_path=None):
@@ -55,7 +56,7 @@ imports the trace labels from the clustering results of CoTraDict
 
 def CoTraDic_export_clusters_log_from_result(original_log_file, xls_file_path, output_folder):
     labels = CoTraDic_import_clusters_indices(xls_file_path)
-    split_log_according_to_clusters(original_log_file, labels, output_folder)
+    split_log_according_to_clusters(pm.read_xes(original_log_file), labels, output_folder)
 
 
 if __name__ == '__main__':
@@ -67,5 +68,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    CoTraDic_export_clusters_log_from_result(args.log_file,args.xls_result,args.output_folder)
-
+    CoTraDic_export_clusters_log_from_result(args.log_file, args.xls_result, args.output_folder)

@@ -73,7 +73,8 @@ def retrieve_trace_measures_metadata(input_file_path: str):
         print("File extension not recognized for Janus Results")
 
 
-def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_path=None, measure="Confidence"):
+def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_path=None, measure="Confidence",
+                                           skip_model_measures=True):
     """
     From the trace measures, given a specific measure, transpose the results for that one measure for each trace,
     i.e. a matrix where the rows are the constraints and the columns are the traces, and
@@ -82,6 +83,7 @@ def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_
     :param trace_measures_csv_file_path:
     :param output_path:
     :param measure:
+    :param skip_model_measures: do not import the measures related to the entire model
     """
     temp_res = {}
     traces_mapping = {}
@@ -97,6 +99,8 @@ def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_
         for line in csv_file:
             if temp_pivot == "":
                 temp_pivot = line['Constraint']
+            if skip_model_measures and line['Constraint'] == 'MODEL':
+                continue
             temp_res.setdefault(line['Constraint'], {})
             if traces_mapping.setdefault(line['Trace'], "T" + str(trace_index)) == "T" + str(trace_index):
                 trace_index += 1

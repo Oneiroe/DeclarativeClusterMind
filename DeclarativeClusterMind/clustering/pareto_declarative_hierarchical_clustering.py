@@ -8,7 +8,8 @@ import graphviz
 import DeclarativeClusterMind.io.Janus3_import as j3io
 import DeclarativeClusterMind.utils.aggregate_clusters_measures
 import DeclarativeClusterMind.utils.split_log_according_to_declare_model as splitter
-from DeclarativeClusterMind.clustering.cm_clustering import get_attributes_statistics_in_trace, get_attributes_statistics_in_log
+from DeclarativeClusterMind.clustering.cm_clustering import get_attributes_statistics_in_trace
+from DeclarativeClusterMind.evaluation.clusters_statistics import get_attributes_statistics_in_log
 
 import pm4py as pm
 from pm4py.objects.log.importer.xes import importer as xes_importer

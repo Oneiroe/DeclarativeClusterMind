@@ -32,7 +32,7 @@ CLUSTERING_POLICY="rules"
 # 'specific-attribute'
 # 'performances'
 # 'mixed'
-SPLIT_POLICY="rules"
+SPLIT_POLICY="attributes"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
@@ -53,7 +53,7 @@ mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DAT
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="kmeans"
+CLUSTERING_ALGORITHM="optics"
 #        'kmeans',  # 0
 #        'affinity',  # 1
 #        'meanshift',  # 2

@@ -4,25 +4,20 @@ import csv
 from collections import Counter
 import datetime
 
-# import DeclarativeClusterMind.IO.SJ2T_import as cmio
-
-
 import DeclarativeClusterMind.io.Janus3_import as j3io
+from DeclarativeClusterMind.evaluation import utils, clusters_statistics
 
 import pm4py as pm
-from pm4py.objects.log.obj import EventLog
-from pm4py.objects.log.exporter.xes import exporter as xes_exporter
-from pm4py.objects.log.importer.xes import importer as xes_importer
+
 from pm4py.objects.log.util import get_log_representation
 from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
+from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
 from pm4py.visualization.process_tree import visualizer as pt_visualizer
 from pm4py.visualization.petri_net import visualizer as pn_visualizer
-from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
 from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
-from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
 from pm4py.visualization.dfg import visualizer as dfg_visualization
-import pm4py.statistics.traces.generic.log as stats
 
 import pandas as pd
 import numpy as np
@@ -35,7 +30,6 @@ from scipy.cluster import hierarchy
 from sklearn.metrics import silhouette_score, silhouette_samples
 
 import plotly.express as px
-import plotly.graph_objects as go
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 
@@ -313,142 +307,6 @@ Cluster traces according to declarative rules measurements evaluated on them
     return clusters, pca, input2D
 
 
-def split_log_according_to_clusters(log, clusters):
-    """
-    Split the log into sub-logs according to the clusters, returns the list of logs
-    :param log:
-    :param clusters:
-    """
-    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
-    # sub_logs = list(range(n_clusters))
-    sub_logs = dict.fromkeys(set(clusters.labels_), [])
-    # initialize sublogs with original log properties
-    # for i in range(n_clusters):
-    for i in set(clusters.labels_):
-        sub_log = EventLog()
-        sub_log._attributes = log.attributes
-        sub_log._classifiers = log.classifiers
-        sub_log._extensions = log.extensions
-        sub_log._omni = log.omni_present
-        sub_logs[i] = sub_log
-    trace_index = 0
-    # put traces in sub-logs
-    for trace in log:
-        sub_logs[clusters.labels_[trace_index]].append(trace)
-        trace_index += 1
-    return sub_logs
-
-
-def retrieve_cluster_statistics(clusters, log_file_path, output_folder):
-    """
-     retrieve the statistics of the sub-logs of each clusters.
-     Specifically, it retrieves for each cluster:
-        - number of traces
-        - average, min and max trace length
-        - unique tasks in the sub-log
-        - min and max timestamp (i.e. timestamp of the first and last activities of the cluster)
-        + PM4Py ready to use stats
-    :param clusters:
-    :param log_file_path:
-    """
-    print('>>>>>>>>>> Statistics')
-    # load log
-    log = pm.read_xes(log_file_path)
-    logs = split_log_according_to_clusters(log, clusters)
-    # export_traces_labels(log, clusters, os.path.join(output_folder, log.attributes['concept:name'] + '_traces-labels.csv' ) )
-    export_traces_labels_multi_perspective(log, clusters, os.path.join(output_folder,
-                                                                       f"{log.attributes['concept:name']}_traces-labels.csv")
-                                           )
-    # export clusters logs to disk
-    for cluster_index in logs:
-        xes_exporter.apply(logs[cluster_index],
-                           os.path.join(output_folder,
-                                        f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
-    # retrieve and output stats
-    with open(os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"), 'w') as output:
-        csv_out = csv.writer(output, delimiter=';')
-        csv_out.writerow([
-            'CLUSTER_NUM',
-            'TRACES',
-            'TRACE-LEN-AVG',
-            'TRACE-LEN-MIN',
-            'TRACE-LEN-MAX',
-            'DURATION-MEDIAN',
-            'DURATION-MIN',
-            'DURATION-MAX',
-            'CASE-ARRIVAL-AVG',
-            'VARIANTS-NUM',
-            'TASKS-NUM',
-            'TASKS'
-        ])
-        for cluster_index in logs:
-            current_s_log = logs[cluster_index]
-            traces_num = len(current_s_log)
-            events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
-            events_min = min(len(i) for i in current_s_log)
-            events_max = max(len(i) for i in current_s_log)
-            unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
-            unique_tasks_num = len(unique_tasks)
-            duration_median = stats.case_statistics.get_median_caseduration(current_s_log)
-            duration_min = min(stats.case_statistics.get_all_casedurations(current_s_log))
-            duration_max = max(stats.case_statistics.get_all_casedurations(current_s_log))
-            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
-            variants_num = len(stats.case_statistics.get_variant_statistics(current_s_log))
-            csv_out.writerow(
-                [cluster_index, traces_num, events_avg, events_min, events_max,
-                 duration_median, duration_min, duration_max, case_arrival_avg, variants_num,
-                 unique_tasks_num, unique_tasks])
-
-        return logs
-
-
-def get_attributes_statistics_in_log(current_s_log, all_events_attributes):
-    """
-    Returns the statistics of the given events attributes in a log:
-    - numerical attributes: [avg, min, max]
-    - categorical attributes: [number of values, list of all values in cluster]
-    - TimeStamp: [avg,min,max]
-
-    :param current_s_log:
-    :param all_events_attributes:
-    :return:
-    """
-    result = []
-    for attribute in all_events_attributes:
-        result += [[]]
-        # map, key-value: attribute value-number of traces with that value
-        current_attribute_values = attributes_filter.get_attribute_values(current_s_log, attribute)
-        #     If attribute is numeric (int or float)
-        current_attributes_value_list = sorted(list(current_attribute_values.keys()))
-        if len(current_attributes_value_list) == 0:
-            continue
-        if type(current_attributes_value_list[0]) is int or type(current_attributes_value_list[0]) is float:
-            # BEWARE sometimes INT are used for categorical encoding
-            current_max = max(current_attributes_value_list)
-            current_min = min(current_attributes_value_list)
-            current_avg = sum([k * current_attribute_values[k] for k in current_attribute_values]) / sum(
-                current_attribute_values[k] for k in current_attribute_values)
-            result[-1] = [current_avg, current_min, current_max]
-        #     If attribute is categorical (string)
-        elif type(current_attributes_value_list[0]) is str:
-            current_values = current_attributes_value_list
-            current_values_num = len(current_attributes_value_list)
-            result[-1] = [current_values_num, current_values]
-        elif type(current_attributes_value_list[0]) is datetime.datetime:
-            current_max = datetime.datetime.strftime(max(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
-            current_min = datetime.datetime.strftime(min(current_attributes_value_list), "%Y-%m-%d %H:%M:%S")
-            # This average is not weighted
-            current_avg = datetime.datetime.strftime(datetime.datetime.fromtimestamp(
-                sum(map(datetime.datetime.timestamp, current_attributes_value_list)) / len(
-                    current_attributes_value_list)), "%Y-%m-%d %H:%M:%S")
-            result[-1] = [current_avg, current_min, current_max]
-
-    for trace in current_s_log:
-        for event in trace:
-            pass
-    return result
-
-
 def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
     """
     Returns the statistics of the given events attributes in a trace:
@@ -478,128 +336,6 @@ def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
         else:
             result[-1] = current_attributes_value_list
     return result
-
-
-def retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder, compute_f1=False):
-    """
-     retrieve the statistics of the performances and attributes of the sub-logs of each clusters.
-     Specifically, it retrieves for each cluster:
-     - PERFORMANCES:
-        - number of traces
-        - average, min and max trace length
-        - unique tasks in the sub-log
-        - min and max timestamp (i.e. timestamp of the first and last activities of the cluster)
-        + PM4Py ready to use stats
-    - OTHER PERSPECTIVES (log dependent)
-        - numerical attributes: max, min, avg
-        - categorical attributes: number of values, list of all values in cluster
-
-    TODO expose compute_f1 in input
-
-    :param compute_f1: flag to compute or not the imperative fitness, precision, and F1 scors
-    :param clusters:
-    :param log_file_path:
-    :param output_folder:
-    """
-    print('>>>>>>>>>> Statistics')
-    # load log
-    log = pm.read_xes(log_file_path)
-    all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
-    logs = split_log_according_to_clusters(log, clusters)
-    # export_traces_labels(log, clusters, os.path.join(output_folder, log.attributes['concept:name'] + '_traces-labels.csv'))
-    export_traces_labels_multi_perspective(log, clusters,
-                                           os.path.join(output_folder,
-                                                        f"{log.attributes['concept:name']}_traces-labels.csv"))
-    # export clusters logs to disk
-    for cluster_index in logs:
-        xes_exporter.apply(logs[cluster_index],
-                           os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
-    header = ['CLUSTER_NUM',
-              'TRACES',
-              'TRACE-LEN-AVG',
-              'TRACE-LEN-MIN',
-              'TRACE-LEN-MAX',
-              'DURATION-MEDIAN',
-              'DURATION-MIN',
-              'DURATION-MAX',
-              'CASE-ARRIVAL-AVG',
-              'VARIANTS-NUM',
-              'TASKS-NUM',
-              'TASKS']
-    if compute_f1:
-        header += ['FITNESS', 'PRECISION', 'F1']
-    header += all_events_attributes
-
-    # retrieve and output stats
-    with open(os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"), 'w') as output:
-        csv_out = csv.writer(output, delimiter=';')
-        csv_out.writerow(header)
-        f1_avg = 0
-        for cluster_index in logs:
-            current_s_log = logs[cluster_index]
-            traces_num = len(current_s_log)
-            events_avg = sum((len(i) for i in current_s_log)) / len(current_s_log)
-            events_min = min(len(i) for i in current_s_log)
-            events_max = max(len(i) for i in current_s_log)
-            unique_tasks = sorted(list(set(e['concept:name'] for t in current_s_log for e in t)))
-            unique_tasks_num = len(unique_tasks)
-            duration_median = stats.case_statistics.get_median_case_duration(current_s_log)
-            duration_min = min(stats.case_statistics.get_all_case_durations(current_s_log))
-            duration_max = max(stats.case_statistics.get_all_case_durations(current_s_log))
-            case_arrival_avg = stats.case_arrival.get_case_arrival_avg(current_s_log)
-            variants_num = len(stats.case_statistics.get_variant_statistics(current_s_log))
-
-            if compute_f1:
-                # F1 fitness et all
-                # petri_net, initial_marking, final_marking = pm.discover_petri_net_heuristics(current_s_log)
-                petri_net, initial_marking, final_marking = pm.discover_petri_net_inductive(current_s_log, 0.3)
-                # FITNESS
-                # fitness_align_dictio = pm.fitness_alignments(current_s_log, petri_net, initial_marking, final_marking)
-                fitness_replay_dictio = pm.fitness_token_based_replay(current_s_log, petri_net, initial_marking,
-                                                                      final_marking)
-                # fitness = fitness_align_dictio['averageFitness']
-                fitness = fitness_replay_dictio['log_fitness']
-                # PRECISION:alignment vs token replay
-                # precision = pm.precision_alignments(current_s_log, petri_net, initial_marking, final_marking)
-                precision = pm.precision_token_based_replay(current_s_log, petri_net, initial_marking, final_marking)
-                f1 = 2 * (precision * fitness) / (precision + fitness)
-                # print(fitness_align_dictio)
-                # print(f"Fitness: {fitness}")
-                # print(f"Precision: {prec_align}")
-                # print(f"F1: {f1}")
-                f1_avg += f1
-
-            # Attributes
-            events_attributes = get_attributes_statistics_in_log(current_s_log, all_events_attributes)
-
-            row_to_write = [cluster_index, traces_num, events_avg, events_min, events_max,
-                            duration_median, duration_min, duration_max, case_arrival_avg, variants_num,
-                            unique_tasks_num, unique_tasks]
-            if compute_f1:
-                row_to_write += [fitness, precision, f1]
-            row_to_write += events_attributes
-            csv_out.writerow(row_to_write)
-
-    if compute_f1:
-        print(f"average F1: {f1_avg / len(logs)}")
-
-    return logs
-
-
-def export_traces_labels(log, clusters, output_file_path):
-    """
-Export a csv file containing for each trace the corresponding cluster
-    :param output_file_path:
-    """
-    print("Exporting traces cluster labels to " + output_file_path)
-    with open(output_file_path, 'w') as output_file:
-        csv_writer = csv.writer(output_file, delimiter=';')
-        header = ["TRACE", "CLUSTER"]
-        csv_writer.writerow(header)
-
-        # put traces in sub-logs
-        for trace_index in range(len(log)):
-            csv_writer.writerow([trace_index, clusters.labels_[trace_index]])
 
 
 def export_traces_labels_multi_perspective(log, clusters, output_file_path):
@@ -664,39 +400,6 @@ def plot_clusters_imperative_models(clusters_logs, model='DFG'):
             dfg_visualization.view(gviz)
 
 
-def plot_clusters_performances_box_plots(clusters_logs, output_folder=None):
-    """
-Plot the boxplot of the performance (execution time) of each cluster
-
-    TODO use previously computed input2D instead of recomputing from scratch, just BEWARE the completion time may be lost due to PCA
-
-    :param output_folder:
-    :param clusters_logs: container of pm4py xes logs, one for each cluster
-    """
-    print("plotting boxplots of clusters performances...")
-    data = {}
-    for cluster_index in clusters_logs:
-        current_data = [(trace[-1]['time:timestamp'] - trace[0]['time:timestamp']).total_seconds()
-                        for trace in clusters_logs[cluster_index]]
-        data[sum(current_data) / len(current_data)] = [cluster_index, current_data]
-
-    fig = go.Figure()
-    for cluster in sorted(data):
-        fig.add_trace(go.Box(y=data[cluster][1], name=f"Cluster-{data[cluster][0]}"))
-    # fig = px.box(df)
-    fig.update_layout(
-        title="Clusters performances",
-        yaxis_title="Seconds",
-    )
-    fig.show()
-
-    if output_folder is not None:
-        output_file = os.path.join(output_folder, "performances_boxplot")
-        print(f"Saving boxplot in {output_file}")
-        fig.write_html(f"{output_file}.html")
-        fig.write_image(f"{output_file}.svg")
-
-
 def visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
     print(">>>>>visualize centroids constraints")
     try:
@@ -721,30 +424,7 @@ def visualize_centroids_constraints(clusters, pca, threshold, measures_num, cons
         print("ERROR >>> Centroid export error:", sys.exc_info()[0])
 
 
-def visualize_pca_relevant_constraints(clusters, pca, measures_num, constraints_names, output_folder):
-    print(">>>>>visualize PCA selected constraints")
-    with open(os.path.join(output_folder, 'pca-features.csv'), 'w') as output:
-        constraint_measures_names = [c + "_m" + str(m) for c in constraints_names for m in range(measures_num)]
-        n_pcs = pca.components_.shape[0]
-        pca_features = pd.DataFrame(pca.components_, columns=constraint_measures_names)
-        # Print all features importance
-        csv_output = csv.writer(output, delimiter=';')
-        csv_output.writerow(constraint_measures_names)
-        for i in range(pca_features.shape[0]):
-            csv_output.writerow(pca_features.transpose()[i])
-
-        # Correlation Matrix between constraints
-        # plt.matshow(pca_features.corr())
-        # plt.show()
-
-        # most important features
-        most_important = [np.abs(pca.components_[i]).argmax() for i in range(n_pcs)]
-        most_important_names = [constraint_measures_names[most_important[i]] for i in range(n_pcs)]
-        dic = {'PC{}'.format(i): most_important_names[i] for i in range(n_pcs)}
-        print(pd.DataFrame(dic.items()))
-
-
-def visualize_pca_relevant_feature(pca, feature_names, output_folder):
+def export_pca_relevant_feature(pca, feature_names, output_folder):
     print(">>>>>visualize PCA selected features")
     with open(os.path.join(output_folder, 'pca-features.csv'), 'w') as output:
         n_pcs = pca.components_.shape[0]
@@ -766,7 +446,8 @@ def visualize_pca_relevant_feature(pca, feature_names, output_folder):
         print(pd.DataFrame(dic.items()))
 
 
-def visualize_silhouette(clusters, input2D, traces_cluster_labels, silhouette_avg, output_folder=None):
+def visualize_silhouette(clusters, input2D, traces_cluster_labels, silhouette_avg, output_folder=None,
+                         immediate_visualization=False):
     """
 Visualize the silhouette score of each cluster and trace
 
@@ -821,7 +502,8 @@ Visualize the silhouette score of each cluster and trace
         print(f"Saving silhouette plot in {output_file}")
         plt.savefig(f"{output_file}.svg")
 
-    plt.show()
+    if output_folder is None or immediate_visualization:
+        plt.show()
 
 
 def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clustering_algorithm, boolean_confidence,
@@ -851,20 +533,20 @@ def behavioural_clustering(trace_measures_csv_file_path, log_file_path, clusteri
                                                                       boolean_confidence,
                                                                       apply_pca_flag,
                                                                       number_of_clusters)
-
-    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+    log = pm.read_xes(log_file_path)
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, measures_num,
                                                 constraints_names, visualization_flag,
                                                 apply_pca_flag, pca)
 
 
-def clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+def clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, measures_num,
                                                 features_names, visualization_flag,
                                                 apply_pca_flag, pca):
     """
 Retrieve and export cluster statistics and visualization if enabled
 
     :param output_folder:
-    :param log_file_path:
+    :param log:
     :param visualization_flag:
     :param input2D: 
     :param clusters: 
@@ -874,13 +556,30 @@ Retrieve and export cluster statistics and visualization if enabled
     :param pca: 
     """
     # STATS
-    # clusters_logs = retrieve_cluster_statistics(clusters, log_file_path, output_folder)
-    clusters_logs = retrieve_cluster_statistics_multi_perspective(clusters, log_file_path, output_folder)
+    #
+    print('>>>>>>>>>> Statistics')
+    # load log
+    export_traces_labels_multi_perspective(log,
+                                           clusters,
+                                           os.path.join(output_folder,
+                                                        f"{log.attributes['concept:name']}_traces-labels.csv"))
+    clusters_logs = utils.split_log_according_to_clusters(log, clusters.labels_, output_folder)
+    # export clusters logs to disk
+    # for cluster_index in logs:
+    #     xes_exporter.apply(logs[cluster_index],
+    #                        os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster_index}.xes"))
+
+    clusters_statistics.export_cluster_statistics_multi_perspective(
+        clusters_logs,
+        os.path.join(output_folder, f"{log.attributes['concept:name']}_clusters-stats.csv"))
+
     if apply_pca_flag:
         if measures_num > 0:
-            visualize_pca_relevant_constraints(clusters, pca, measures_num, features_names, output_folder)
+            constraint_measures_names = [c + "_m" + str(m) for c in features_names for m in range(measures_num)]
+            export_pca_relevant_feature(pca, constraint_measures_names, output_folder)
         else:
-            visualize_pca_relevant_feature(pca, features_names, output_folder)
+            export_pca_relevant_feature(pca, features_names, output_folder)
+
     # average Silhouette coefficient
     traces_cluster_labels = clusters.fit_predict(input2D)
     mean_silhouette = silhouette_score(input2D, traces_cluster_labels)
@@ -891,7 +590,9 @@ Retrieve and export cluster statistics and visualization if enabled
         print(">>>>>>>>>>>> Visualization")
         # plot_clusters_imperative_models(clusters_logs)
 
-        plot_clusters_performances_box_plots(clusters_logs, output_folder)
+        clusters_statistics.plot_clusters_performances_box_plots(clusters_logs,
+                                                                 os.path.join(output_folder,
+                                                                              "performances_boxplot.svg"))
 
         visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette, output_folder)
 
@@ -949,8 +650,9 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     :param visualization_flag:
     :param apply_pca_flag:
     """
+    log = pm.read_xes(log_file_path)
 
-    data, feature_names = get_log_representation.get_default_representation(xes_importer.apply(log_file_path))
+    data, feature_names = get_log_representation.get_default_representation(log)
     # 1-hot encoding
     input2D = pd.DataFrame(data, columns=feature_names)
 
@@ -980,7 +682,7 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
     print("Clustering...")
     clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
 
-    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
                                                 apply_pca_flag, pca)
 
@@ -1001,7 +703,7 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
     :param apply_pca_flag:
     """
 
-    log = xes_importer.apply(log_file_path)
+    log = pm.read_xes(log_file_path)
 
     # data = [[trace[-1]['time:timestamp'] - trace[0]['time:timestamp'], len(trace), len(set(e['concept:name'] for e in trace))] for trace in log]
     data = [[
@@ -1043,7 +745,7 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
     print("Clustering...")
     clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
 
-    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
                                                 apply_pca_flag, pca)
 
@@ -1074,8 +776,9 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     :param output_folder:
     :param visualization_flag:
     """
+    log = pm.read_xes(log_file_path)
 
-    data, feature_names = get_log_representation.get_default_representation(xes_importer.apply(log_file_path))
+    data, feature_names = get_log_representation.get_default_representation(log)
     # 1-hot encoding
     input2D = pd.DataFrame(data, columns=feature_names)
 
@@ -1113,7 +816,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     print("Clustering...")
     clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm, number_of_clusters)
 
-    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, 0, feature_names,
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
                                                 False, None)
 
@@ -1144,7 +847,8 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
 
     print("2D shape rules:" + str(input2D_rules.shape))
 
-    log = xes_importer.apply(log_file_path)
+    log = pm.read_xes(log_file_path)
+
     attributes_data, attributes_names = get_log_representation.get_default_representation(log)
     # 1-hot encoding
     input2D_attributes = pd.DataFrame(attributes_data, columns=attributes_names)
@@ -1200,7 +904,7 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print("Features: " + str(features_num))
     clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm, number_of_clusters)
 
-    clustering_postprocessing_and_visualization(log_file_path, output_folder, input2D, clusters, measures_num,
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, measures_num,
                                                 features_names, visualization_flag,
                                                 apply_pca_flag, pca)
 

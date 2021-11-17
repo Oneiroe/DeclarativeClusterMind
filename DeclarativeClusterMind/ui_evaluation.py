@@ -8,6 +8,7 @@ Currently the following analysis are supported:
 
 from gooey import Gooey, GooeyParser
 
+from DeclarativeClusterMind.evaluation.silhouette_score import compute_silhouette_from_trace_measures_files
 from evaluation import f1_score, utils
 
 
@@ -32,24 +33,24 @@ def main():
 
     # F1-SCORE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_f1 = subparsers.add_parser("f1",
-                                                description="Average Precision/Recall measure of the clusters",
-                                                help="Precision/Recall measure of the clusters",
-                                                parents=[parent_parser])
+                                      description="Average Precision/Recall measure of the clusters",
+                                      help="Precision/Recall measure of the clusters",
+                                      parents=[parent_parser])
     parser_f1.add_argument('-iLf', '--input-logs-folder',
-                               help='Path to the folder containing the clusters event logs', type=str,
-                               widget='DirChooser', required=True)
+                           help='Path to the folder containing the clusters event logs', type=str,
+                           widget='DirChooser', required=True)
     parser_f1.add_argument('-a', '--discovery-algorithm',
-                                     help='Discovery algorithm to be used for the discovery of clusters models',
-                                     type=str, widget='Dropdown',
-                                     choices=['inductive',
-                                              'heuristics'],
-                                     default='heuristics')
+                           help='Discovery algorithm to be used for the discovery of clusters models',
+                           type=str, widget='Dropdown',
+                           choices=['inductive',
+                                    'heuristics'],
+                           default='heuristics')
     parser_f1.add_argument('-f', '--fitness-precision-algorithm',
-                                     help='Fitness/Precision algorithm to be used for the discovery of clusters models',
-                                     type=str, widget='Dropdown',
-                                     choices=['token',
-                                              'alignments'],
-                                     default='token')
+                           help='Fitness/Precision algorithm to be used for the discovery of clusters models',
+                           type=str, widget='Dropdown',
+                           choices=['token',
+                                    'alignments'],
+                           default='token')
 
     # F1-SCORE AGGREGATION parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_f1_aggregate = subparsers.add_parser("aggregate-f1",
@@ -57,18 +58,25 @@ def main():
                                                 help="Aggregate Precision/Recall measure of the clusters",
                                                 parents=[parent_parser])
     parser_f1_aggregate.add_argument('-iLf', '--input-base-folder',
-                           help='Path to the folder containing the sub-folders with the f1-score results', type=str,
-                           widget='DirChooser', required=True)
+                                     help='Path to the folder containing the sub-folders with the f1-score results',
+                                     type=str,
+                                     widget='DirChooser', required=True)
     parser_f1_aggregate.add_argument('-p', '--plot-file',
-                           help='Path to the ouput bar-plot file if desired', type=str,
-                           widget='FileSaver', required=False)
-
-
+                                     help='Path to the ouput bar-plot file if desired', type=str,
+                                     widget='FileSaver', required=False)
 
     # SILHOUETTE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_silhouette = subparsers.add_parser("silhouette",
-                                              description="Silhouette measure of the clusters",
-                                              help="Silhouette measure of the clusters", parents=[parent_parser])
+                                              description="Silhouette measure of the clusters based on trace measures",
+                                              help="Silhouette measure of clusters based on trace measures", parents=[parent_parser])
+    parser_silhouette.add_argument('-i', '--input-trace-measures',
+                                     help='Path to the trace measures CVS',
+                                     type=str,
+                                     widget='FileChooser', required=True)
+    parser_silhouette.add_argument('-l', '--labels-file',
+                                     help='Path to the trace labels CVS',
+                                     type=str,
+                                     widget='FileChooser', required=True)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -81,7 +89,7 @@ def main():
     # 'silhouette'
 
     if metric == 'f1':
-        clusters_logs, indices_logs = utils.load_clusters_logs_from_folder(args.input_logs_folder)
+        clusters_logs, indices_logs = utils.load_clusters_logs_list_from_folder(args.input_logs_folder)
         f1_score.compute_f1(
             clusters_logs,
             indices_logs,
@@ -92,7 +100,13 @@ def main():
     elif metric == 'aggregate-f1':
         f1_score.aggregate_f1_results(args.input_base_folder, args.output_file, args.plot_file)
     elif metric == 'silhouette':
-        print("Not yet Implemented")
+        compute_silhouette_from_trace_measures_files(args.input_trace_measures,
+                                                     args.labels_file,
+                                                     args.output_file)
+    elif metric == 'performances':
+        print('To Interface performances boxplot') # TODO
+    elif metric == 'stats':
+        print('To Interface clusters stats export')  # TODO
 
 
 if __name__ == '__main__':

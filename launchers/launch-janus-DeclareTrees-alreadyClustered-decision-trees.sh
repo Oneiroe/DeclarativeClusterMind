@@ -22,9 +22,11 @@ DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
 DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
 
-LOG_NAME="MANUAL"
+LOG_NAME="WSVX"
 # "MANUAL"
+# "SEPSIS_age"
 # "BPIC15_f"
+# "BPIC15_f_participation"
 # "WSVX"
 # "COVID"
 #
@@ -32,7 +34,6 @@ LOG_NAME="MANUAL"
 # "BPIC13"
 # "SEPSIS"
 # "RTFMP"
-# "BPIC15_1f"
 # "BPIC17_f"
 
 SPLIT_POLICY="rules"
@@ -106,7 +107,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   if test -f "${CURRENT_MODEL}"; then
     echo "$FILE already exists."
   else
-    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${CURRENT_MODEL}
+    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON "${CURRENT_MODEL}"
 #    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
