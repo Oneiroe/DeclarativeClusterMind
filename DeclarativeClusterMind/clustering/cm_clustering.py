@@ -1,7 +1,6 @@
 import os
 import sys
 import csv
-from collections import Counter
 import datetime
 
 import DeclarativeClusterMind.io.Janus3_import as j3io
@@ -11,66 +10,27 @@ import pm4py as pm
 
 from pm4py.objects.log.util import get_log_representation
 from pm4py.algo.filtering.log.attributes import attributes_filter
-from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-from pm4py.algo.discovery.heuristics import algorithm as heuristics_miner
-from pm4py.algo.discovery.dfg import algorithm as dfg_discovery
-from pm4py.visualization.process_tree import visualizer as pt_visualizer
-from pm4py.visualization.petri_net import visualizer as pn_visualizer
-from pm4py.visualization.heuristics_net import visualizer as hn_visualizer
-from pm4py.visualization.dfg import visualizer as dfg_visualization
 
 import pandas as pd
 import numpy as np
 import sklearn.cluster as cluster
-from sklearn.manifold import TSNE
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
-from scipy.cluster.hierarchy import dendrogram
-from scipy.cluster import hierarchy
 from sklearn.metrics import silhouette_score, silhouette_samples
 
-import plotly.express as px
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 
 import wx
 
 
-def block_diag_einsum(arr, num):
-    rows, cols = arr.shape
-    result = np.zeros((num, rows, num, cols), dtype=arr.dtype)
-    diag = np.einsum('ijik->ijk', result)
-    diag[:] = arr
-    return result.reshape(rows * num, cols * num)
-
-
-def initialize_centroids(measures_num, centroids_num):
-    """
-    Create diagonal matrix of 1s representing centroids in which all the measure of a centroids
-    are equal to 1 for just a specific constraint and 0 elsewhere.
-    
-    Example. Given 3 centroids and 4 measures the result will be
-    1111 0000 0000
-    0000 1111 0000
-    0000 0000 1111
-    
-    :param measures_num:
-    :param centroids_num:
-    :return:
-    """
-    a = np.zeros((1, measures_num))
-    a.fill(1)
-    return block_diag_einsum(a, centroids_num)
-
-
-def cluster_traces(input2D, apply_pca_flag, features, measures, algorithm, nc=None):
+def cluster_traces(input2D, apply_pca_flag, features, algorithm, nc=None):
     """
 Cluster the traces according to the selected algorithm
     :param nc:
     :param input2D:
     :param apply_pca_flag:
     :param features:
-    :param measures:
     :param algorithm:
     :return:
     """
@@ -91,18 +51,16 @@ Cluster the traces according to the selected algorithm
             else:
                 nc = pd.DataFrame(input2D).nunique()[0]  # works only if PCA is not enabled
 
-    if (algorithm == 'kmeans'):
+    if algorithm == 'kmeans':
         # K-means
         try:
             print("K-Kmeans...")
-            # centroids_init = initialize_centroids(measures, nc)
-            # kmeans = cluster.KMeans(n_clusters=nc, init=centroids_init).fit(input2D)
             kmeans = cluster.KMeans(n_clusters=nc).fit(input2D)
             print("Kmeans: \t\t" + str(kmeans.labels_))
             return kmeans
         except:
             print("K-Means error:", sys.exc_info()[0])
-    elif (algorithm == 'affinity'):
+    elif algorithm == 'affinity':
         # Affinity
         try:
             affinity = cluster.AffinityPropagation(random_state=0).fit(input2D)
@@ -110,7 +68,7 @@ Cluster the traces according to the selected algorithm
             return affinity
         except:
             print("affinity error:", sys.exc_info()[0])
-    elif (algorithm == 'meanshift'):
+    elif algorithm == 'meanshift':
         # mean-shift
         try:
             mean_shift = cluster.MeanShift().fit(input2D)
@@ -118,7 +76,7 @@ Cluster the traces according to the selected algorithm
             return mean_shift
         except:
             print("mean_shift error:", sys.exc_info()[0])
-    elif (algorithm == 'agglomerative'):
+    elif algorithm == 'agglomerative':
         # Agglomerative hierarchical
         try:
             agglomerative = cluster.AgglomerativeClustering(n_clusters=nc).fit(input2D)
@@ -126,7 +84,7 @@ Cluster the traces according to the selected algorithm
             return agglomerative
         except:
             print("Agglomerative error:", sys.exc_info()[0])
-    elif (algorithm == 'spectral'):
+    elif algorithm == 'spectral':
         # Spectral
         try:
             spectral = cluster.SpectralClustering(n_clusters=nc).fit(input2D)
@@ -134,7 +92,7 @@ Cluster the traces according to the selected algorithm
             return spectral
         except:
             print("Spectral error:", sys.exc_info()[0])
-    elif (algorithm == 'dbscan'):
+    elif algorithm == 'dbscan':
         # DBSCAN
         try:
             dbscan = cluster.DBSCAN().fit(input2D)
@@ -142,7 +100,7 @@ Cluster the traces according to the selected algorithm
             return dbscan
         except:
             print("DBSCAN error:", sys.exc_info()[0])
-    elif (algorithm == 'optics'):
+    elif algorithm == 'optics':
         # OPTICS
         try:
             optics = cluster.OPTICS().fit(input2D)
@@ -150,7 +108,7 @@ Cluster the traces according to the selected algorithm
             return optics
         except:
             print("OPTICS error:", sys.exc_info()[0])
-    elif (algorithm == 'birch'):
+    elif algorithm == 'birch':
         # birch
         try:
             birch = cluster.Birch(n_clusters=nc).fit(input2D)
@@ -159,7 +117,7 @@ Cluster the traces according to the selected algorithm
             return birch
         except:
             print("birch error:", sys.exc_info()[0])
-    elif (algorithm == 'gaussian'):  # DO NOT USE THIS!
+    elif algorithm == 'gaussian':  # DO NOT USE THIS!
         # gaussian
         gaussian = GaussianMixture(n_components=nc).fit(input2D)
         print("gaussian: \t\t" + str(gaussian.labels_))
@@ -169,100 +127,7 @@ Cluster the traces according to the selected algorithm
         return None
 
 
-def visualize_heatmap(input2D, clusters):
-    print(">>>> Visualize heatmap of MMM")
-    try:
-        centorids = clusters.cluster_centers_
-        fig = px.imshow(centorids, title='Centroids')
-        fig.show()
-    except:
-        print("ERROR >>> Centroid visualization error:", sys.exc_info()[0])
-
-    fig2 = px.imshow(input2D, title='MMM-2D')
-    fig2.show()
-
-
-def visualize_constraints_in_clusters(clusters, labels, traces_index):
-    print(">>>>> Visualize constraints present in the clusters")
-    res_df = pd.DataFrame()
-    res_df_naive = pd.DataFrame()
-    res = {}
-    i = 0
-    n_clusters = max(clusters.labels_) - min(clusters.labels_) + 1
-    for c in clusters.labels_:
-        res.setdefault(c, Counter())
-        for label in labels[traces_index[i]]:
-            # beware: a trace with multiple active constraints will count +1 for each label
-            res[c].setdefault(label, 0)
-            res[c][label] += 1
-        i += 1
-    for cluster in res.keys():
-        for rule in res[cluster]:
-            res_df = res_df.append({'cluster': cluster, 'rule': rule, 'amount': res[cluster][rule]}, ignore_index=True)
-
-    for cluster in res.keys():
-        # in case there are "empty" cluster, this cycle makes sure that they are included in the bar chart.
-        # note. an "empty" cluster is a cluster in which no rule is satisfied, thus it still brings information
-        if len(res[cluster]) == 0:
-            # Beware! Using the variable "rule" implies that in the previous cycle at least one rule is present in a cluster
-            res_df = res_df.append({'cluster': cluster, 'rule': rule, 'amount': 0}, ignore_index=True)
-    print("construct fig")
-    fig = px.bar(res_df,
-                 # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
-                 # fig = px.bar(res_df[res_df['cluster'].isin([12])],
-                 # barmode='group',
-                 title='Result check',
-                 x='rule', y='amount', facet_col='cluster', color='rule',
-                 facet_col_wrap=10, facet_row_spacing=0.01, facet_col_spacing=0.01)
-    print("render fig")
-    fig.show()
-
-    # NAIVE show the constraints present in the clusters weighted for their frequency in other clusters
-    rules_cluster_frequency = Counter()
-    for cluster in res:
-        rules_cluster_frequency.update(res[cluster].keys())
-    for cluster in res:
-        for rule in res[cluster]:
-            value = n_clusters - rules_cluster_frequency[rule]
-            res_df_naive = res_df_naive.append({'cluster': cluster, 'rule': rule, 'amount': value},
-                                               ignore_index=True)
-    for cluster in res:
-        if len(res[cluster]) == 0:
-            # Beware! Using the variable "rule" implies that in the previous cycle at least one rule is present in a cluster
-            res_df_naive = res_df_naive.append({'cluster': cluster, 'rule': rule, 'amount': 0}, ignore_index=True)
-    fig_naive = px.bar(res_df_naive,
-                       # fig = px.bar(res_df[(res_df['cluster'] > 10) & (res_df['cluster'] < 20)],
-                       # fig = px.bar(res_df[res_df['cluster'].isin([12])],
-                       # barmode='group',
-                       title='Naive: rules in clusters weighted for the inverse of their frequency in other clusters (i.e. rule in just few clusters-Z high bar',
-                       x='rule', y='amount', facet_col='cluster', color='rule',
-                       facet_col_wrap=10, facet_row_spacing=0.01, facet_col_spacing=0.01)
-    fig_naive.show()
-
-
-def plot_3d(df, title='t-SNE 3D Clusters visualization', name='labels'):
-    fig = px.scatter_3d(df, x='x', y='y', z='z', color=name, opacity=0.5, title=title)
-
-    fig.update_traces(marker=dict(size=3))
-    fig.show()
-
-
-def plot_tSNE_3d(input2D, clusters):
-    # 3d plot of clusters through t-SNE
-    print(">>>>> tSNE 3D visualization")
-    names = ['x', 'y', 'z']
-    # Default perplexity=30 perplexity suggested [5,50], n_iter=1000,
-    matrix = TSNE(n_components=3, perplexity=30, n_iter=50000).fit_transform(input2D)
-    df_matrix = pd.DataFrame(matrix)
-    df_matrix.rename({i: names[i] for i in range(3)}, axis=1, inplace=True)
-    df_matrix['labels'] = clusters.labels_
-    plot_3d(df_matrix)
-    if -1 in df_matrix.labels.array:
-        # if the cluster algorithm has a "-1" cluster for unclusterable elements, this line removes these elements form the 3D visualization
-        plot_3d(df_matrix[df_matrix.labels != -1])
-
-
-def cluster_traces_from_rules_trace_measures(trace_measures_file_path, algorithm='dbscan', boolean_confidence=True,
+def cluster_traces_from_rules_trace_measures(trace_measures_file_path, algorithm='optics', boolean_confidence=True,
                                              apply_pca=True, number_of_clusters=0):
     """
 Cluster traces according to declarative rules measurements evaluated on them
@@ -302,7 +167,7 @@ Cluster traces according to declarative rules measurements evaluated on them
     constraints = input3D.shape[1]
     measures = input3D.shape[2]
 
-    clusters = cluster_traces(input2D, apply_pca, constraints, measures, algorithm, number_of_clusters)
+    clusters = cluster_traces(input2D, apply_pca, constraints, algorithm, number_of_clusters)
 
     return clusters, pca, input2D
 
@@ -367,40 +232,7 @@ def export_traces_labels_multi_perspective(log, clusters, output_file_path):
             csv_writer.writerow([trace_index, clusters.labels_[trace_index]] + trace_attributes + trace_performances)
 
 
-def plot_clusters_imperative_models(clusters_logs, model='DFG'):
-    """
-        Plot the desired imperative model of each cluster
-    :param clusters_logs:
-    :param model:
-    """
-    # Imperative models
-    print("clusters imperative models...")
-    for cluster_index in clusters_logs:
-        # PROCESS TREE
-        if model == 'process-tree':
-            tree = inductive_miner.apply_tree(clusters_logs[cluster_index])
-            gviz = pt_visualizer.apply(tree)
-            pt_visualizer.view(gviz)
-        # PETRI-NET
-        elif model == 'petrinet':
-            net, initial_marking, final_marking = inductive_miner.apply(clusters_logs[cluster_index])
-            gviz = pn_visualizer.apply(net)
-            pt_visualizer.view(gviz)
-        ## HEURISTIC-NET
-        elif model == 'heuristic-net':
-            heu_net = heuristics_miner.apply_heu(clusters_logs[cluster_index], parameters={
-                heuristics_miner.Variants.CLASSIC.value.Parameters.DEPENDENCY_THRESH: 0.99})
-            gviz = hn_visualizer.apply(heu_net)
-            hn_visualizer.view(gviz)
-        ## Directly Follow Graph
-        elif model == 'DFG':
-            dfg = dfg_discovery.apply(clusters_logs[cluster_index], variant=dfg_discovery.Variants.PERFORMANCE)
-            gviz = dfg_visualization.apply(dfg, log=clusters_logs[cluster_index],
-                                           variant=dfg_visualization.Variants.PERFORMANCE)
-            dfg_visualization.view(gviz)
-
-
-def visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
+def export_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder):
     print(">>>>>visualize centroids constraints")
     try:
         res_matrix = [list() for i in range(len(clusters.cluster_centers_))]
@@ -446,7 +278,7 @@ def export_pca_relevant_feature(pca, feature_names, output_folder):
         print(pd.DataFrame(dic.items()))
 
 
-def visualize_silhouette(clusters, input2D, traces_cluster_labels, silhouette_avg, output_folder=None,
+def visualize_silhouette(input2D, traces_cluster_labels, silhouette_avg, output_folder=None,
                          immediate_visualization=False):
     """
 Visualize the silhouette score of each cluster and trace
@@ -594,49 +426,18 @@ Retrieve and export cluster statistics and visualization if enabled
                                                                  os.path.join(output_folder,
                                                                               "performances_boxplot.svg"))
 
-        visualize_silhouette(clusters, input2D, traces_cluster_labels, mean_silhouette, output_folder)
+        visualize_silhouette(input2D, traces_cluster_labels, mean_silhouette, output_folder)
 
         # plot_tSNE_3d(input2D, clusters)
         # visualize_heatmap(input2D, clusters)
 
         # threshold = 0.95
         # labels, traces_index = j3io.import_trace_labels(trace_measures_csv_file_path, constraints_num, threshold)
-        # visualize_constraints_in_clusters(clusters, labels, traces_index)
+        # plot_constraints_in_clusters(clusters, labels, traces_index)
 
-        # visualize_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
+        # export_centroids_constraints(clusters, pca, threshold, measures_num, constraints_names, output_folder)
     else:
         print(">>>>>>>>>>>> Visualization SKIPPED")
-
-
-def plot_dendrogram(model, **kwargs):
-    # Create linkage matrix and then plot the dendrogram
-    plt.title('Hierarchical Clustering Dendrogram')
-
-    # create the counts of samples under each node
-    counts = np.zeros(model.children_.shape[0])
-    n_samples = len(model.labels_)
-    for i, merge in enumerate(model.children_):
-        current_count = 0
-        for child_idx in merge:
-            if child_idx < n_samples:
-                current_count += 1  # leaf node
-            else:
-                current_count += counts[child_idx - n_samples]
-        counts[i] = current_count
-
-    # linkage_matrix = np.column_stack([model.children_, model.distances_, counts]).astype(float)
-    linkage_matrix = hierarchy.linkage(model.children_, 'ward')
-
-    # Plot the corresponding dendrogram
-    dendrogram(
-        linkage_matrix,
-        p=len(set(model.labels_)), truncate_mode='lastp',
-        # show_leaf_counts=True,
-        show_contracted=True,
-        color_threshold=0.5 * max(linkage_matrix[:, 2])
-    )
-    plt.xlabel("Number of points in node (or index of point if no parenthesis).")
-    plt.show()
 
 
 def attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag, apply_pca_flag,
@@ -680,7 +481,7 @@ def attribute_clustering(log_file_path, clustering_algorithm, output_folder, vis
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
+    clusters = cluster_traces(input2D, apply_pca_flag, attributes, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
@@ -743,14 +544,14 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, apply_pca_flag, attributes, 0, clustering_algorithm, number_of_clusters)
+    clusters = cluster_traces(input2D, apply_pca_flag, attributes, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
                                                 apply_pca_flag, pca)
 
 
-def select_attribute_window(options_list):
+def select_attribute_GUI(options_list):
     """
 Open a WX window to select from the available attributes of the event log
     :rtype: object
@@ -789,7 +590,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
             print([f"{i},{e}" for i, e in enumerate(feature_names)])
             # selected_attribute_index = int(input("Select feature index: "))
             # feature_name = feature_names[selected_attribute_index]
-            feature_name = select_attribute_window(feature_names)
+            feature_name = select_attribute_GUI(feature_names)
             print(f"Selected feature: {feature_name}")
             break
         except ValueError:
@@ -814,7 +615,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
 
     # CLUSTERING
     print("Clustering...")
-    clusters = cluster_traces(input2D, False, attributes, 0, clustering_algorithm, number_of_clusters)
+    clusters = cluster_traces(input2D, False, attributes, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
                                                 visualization_flag,
@@ -902,7 +703,7 @@ def mixed_clustering(trace_measures_csv_file_path, log_file_path, clustering_alg
     print(clustering_algorithm)
     print("Traces: " + str(traces_num))
     print("Features: " + str(features_num))
-    clusters = cluster_traces(input2D, apply_pca_flag, features_num, 0, clustering_algorithm, number_of_clusters)
+    clusters = cluster_traces(input2D, apply_pca_flag, features_num, clustering_algorithm, number_of_clusters)
 
     clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, measures_num,
                                                 features_names, visualization_flag,
