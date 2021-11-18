@@ -109,7 +109,7 @@ def plot_tSNE_3d(input2D, clusters):
 
 def plot_dendrogram(model, **kwargs):
     # Create linkage matrix and then plot the dendrogram
-    plt.title('Hierarchical Clustering Dendrogram')
+    plt.title('>>>>> Hierarchical Clustering Dendrogram')
 
     # create the counts of samples under each node
     counts = np.zeros(model.children_.shape[0])

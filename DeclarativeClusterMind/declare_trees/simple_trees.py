@@ -32,6 +32,10 @@ class ClusterNode:
         self.threshold = threshold  # Constraint threshold discriminating the current node
         self.clusters = set()  # Set of cluster at the current node
         self.used_constraints = set()  #
+        self.ok_max_previous_value = 0.0  # minimum value once the node is created
+        self.ok_min_previous_value = 1.0  # maximum value once the node is created
+        self.nok_max_previous_value = 0.0  # minimum value once the node is created
+        self.nok_min_previous_value = 1.0  # maximum value once the node is created
 
     def insert_child(self, cluster_name, value):
         if math.isnan(value):
@@ -42,10 +46,14 @@ class ClusterNode:
             if not self.ok:
                 self.ok = ClusterNode(threshold=self.threshold)
             self.ok.clusters.add(cluster_name)
+            self.ok_min_previous_value = min(self.ok_min_previous_value, value)
+            self.ok_max_previous_value = max(self.ok_max_previous_value, value)
         else:
             if not self.nok:
                 self.nok = ClusterNode(threshold=self.threshold)
             self.nok.clusters.add(cluster_name)
+            self.nok_min_previous_value = min(self.nok_min_previous_value, value)
+            self.nok_max_previous_value = max(self.nok_max_previous_value, value)
 
     def print_node(self):
         if self.constraint:
@@ -99,7 +107,8 @@ def print_tree_graphviz(graph, node, aggregate=False):
     if node.ok:
         next_left = print_tree_graphviz(graph, node.ok, aggregate)
         # graph.edge(this_node_code, next_left, label="YES [" + str(len(node.ok.clusters)) + "]", color="green")
-        graph.edge(this_node_code, next_left, label=f">{round(node.threshold, 2)} [{len(node.ok.clusters)}]",
+        graph.edge(this_node_code, next_left,
+                   label=f"≥{round(node.ok_min_previous_value, 2)} [{len(node.ok.clusters)}]",
                    color="green")
     if node.nan:
         next_center = print_tree_graphviz(graph, node.nan, aggregate)
@@ -107,7 +116,8 @@ def print_tree_graphviz(graph, node, aggregate=False):
     if node.nok:
         next_right = print_tree_graphviz(graph, node.nok, aggregate)
         # graph.edge(this_node_code, next_right, label="NO [" + str(len(node.nok.clusters)) + "]", color="red")
-        graph.edge(this_node_code, next_right, label=f"<{round(node.threshold, 2)} [{len(node.nok.clusters)}]",
+        graph.edge(this_node_code, next_right,
+                   label=f"≤{round(node.nok_max_previous_value, 2)} [{len(node.nok.clusters)}]",
                    color="red")
     return this_node_code
 
@@ -433,8 +443,9 @@ Constraints are reordered in each sub-branch according to the frequency in the r
                     clusters_table, leaf.clusters, leaf.used_constraints, reverse, grace_percent)
                 # new threshold to divide the clusters, not on their absolute adherence to the constraint, but to their relative difference
             for cluster_in_node in leaf.clusters:
-                leaf.insert_child(cluster_in_node, clusters_table[constraints_indices[leaf.constraint]][
-                    clusters_indices[cluster_in_node]])
+                leaf.insert_child(
+                    cluster_in_node,
+                    clusters_table[constraints_indices[leaf.constraint]][clusters_indices[cluster_in_node]])
             if leaf.ok:
                 leaf.ok.used_constraints = leaf.used_constraints.copy()
                 leaf.ok.used_constraints.add(leaf.constraint)
