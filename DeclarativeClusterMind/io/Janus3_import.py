@@ -73,8 +73,8 @@ def retrieve_trace_measures_metadata(input_file_path: str):
         print("File extension not recognized for Janus Results")
 
 
-def extract_detailed_trace_perspective_csv(trace_measures_csv_file_path, output_path=None, measure="Confidence",
-                                           skip_model_measures=True):
+def extract_detailed_trace_rules_perspective_csv(trace_measures_csv_file_path, output_path=None, measure="Confidence",
+                                                 skip_model_measures=True):
     """
     From the trace measures, given a specific measure, transpose the results for that one measure for each trace,
     i.e. a matrix where the rows are the constraints and the columns are the traces, and
@@ -131,8 +131,8 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
                                                  trace_labels_file_path,
                                                  output_path,
                                                  label_feature_index=1,
-                                                 measure="Confidence",
-                                                 clean_attributes=True):
+                                                 performances_index=-3,
+                                                 measure="Confidence"):
     """
     From the trace measures, given a specific measure, transpose the results for that one measure for each trace,
     i.e. a matrix where the rows are the constraints and attributes and the columns are the traces, and
@@ -143,46 +143,40 @@ def extract_detailed_trace_multi_perspective_csv(trace_measures_csv_file_path,
     :param output_path:
     :param label_feature_index:
     :param measure:
-    :param clean_attributes:
+    :param performances_index:
     """
     # RULES
-    featured_data_rules, features_names_rules = extract_detailed_trace_perspective_csv(trace_measures_csv_file_path,
-                                                                                       output_path,
-                                                                                       measure)
-
-    # ATTRIBUTES+PERFORMANCES
-    featured_data_attributes = []
-    features_names_attributes = []
-    with open(trace_labels_file_path, 'r') as file:
-        csv_file = csv.reader(file, delimiter=';')
-        header = True
-        for line in csv_file:
-            if header:
-                # BEWARE if index goes out of range it does not rise exception
-                # BEWARE it DOES NOT assumes that the last 3 columns are the performances columns
-                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:]
-                header = False
-            else:
-                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:]]
-
-    featured_data_attributes = pd.DataFrame(featured_data_attributes, columns=features_names_attributes)
-    if clean_attributes:
-        # non-numerical attributes and sets cannot be used for decision tree construction
-        featured_data_attributes = featured_data_attributes.replace({'\[': '', '\]': ''}, regex=True)
-        for i in featured_data_attributes:
-            featured_data_attributes[i] = pd.to_numeric(featured_data_attributes[i], errors='coerce')
+    featured_data_rules, features_names_rules = extract_detailed_trace_rules_perspective_csv(
+        trace_measures_csv_file_path,
+        output_path,
+        measure)
+    # ATTRIBUTES
+    featured_data_attributes, features_names_attributes = extract_detailed_attributes_csv(trace_labels_file_path,
+                                                                                          label_feature_index,
+                                                                                          performances_index
+                                                                                          )
+    # PERFORMANCES : performances hide the other features, thus they are commented out for now
+    # featured_data_performances, features_names_performances = extract_detailed_performances_csv(trace_labels_file_path,
+    #                                                                                             label_feature_index,
+    #                                                                                             performances_index
+    #                                                                                             )
 
     # MERGE
     featured_data = pd.concat([pd.DataFrame(featured_data_rules, columns=features_names_rules),
-                               featured_data_attributes], axis=1)
-    features_names = np.concatenate([features_names_rules, features_names_attributes])
+                               featured_data_attributes
+                                  # , featured_data_performances
+                               ], axis=1)
+    features_names = np.concatenate([features_names_rules,
+                                     features_names_attributes
+                                        # , features_names_performances
+                                     ])
     return featured_data, features_names
 
 
-def extract_detailed_trace_attributes_csv(trace_labels_file_path,
-                                          output_path,
-                                          label_feature_index=1,
-                                          clean_attributes=True):
+def extract_detailed_attributes_csv(trace_labels_file_path,
+                                    label_feature_index=1,
+                                    performances_index=-3,
+                                    clean_attributes=True):
     """
     Return a matrix where the rows are the attributes and the columns are the traces, and
     each cell contains the value of the attribute
@@ -191,6 +185,7 @@ def extract_detailed_trace_attributes_csv(trace_labels_file_path,
     :param label_feature_index:
     :param clean_attributes:
     :param output_path:
+    :param performances_index: index from which starts the performances attributes
     :return:
     """
     # ATTRIBUTES
@@ -202,11 +197,26 @@ def extract_detailed_trace_attributes_csv(trace_labels_file_path,
         for line in csv_file:
             if header:
                 # BEWARE if index goes out of range it does not rise exception
-                # BEWARE it is assumed that the last 3 columns are the performances columns
-                features_names_attributes = line[2:label_feature_index] + line[label_feature_index + 1:-3]
+                if performances_index < 0:
+                    features_names_attributes = line[2:label_feature_index] + line[
+                                                                              label_feature_index + 1:performances_index]
+                else:
+                    if label_feature_index <= performances_index:
+                        features_names_attributes = line[performances_index:]
+                    else:
+                        features_names_attributes = line[performances_index:label_feature_index] + line[
+                                                                                                   label_feature_index + 1:]
                 header = False
             else:
-                featured_data_attributes += [line[2:label_feature_index] + line[label_feature_index + 1:-3]]
+                if performances_index < 0:
+                    featured_data_attributes += [
+                        line[2:label_feature_index] + line[label_feature_index + 1:performances_index]]
+                else:
+                    if label_feature_index <= performances_index:
+                        featured_data_attributes += [line[performances_index:]]
+                    else:
+                        featured_data_attributes += [line[performances_index:label_feature_index] + line[
+                                                                                                    label_feature_index + 1:]]
 
     featured_data_attributes = pd.DataFrame(featured_data_attributes, columns=features_names_attributes)
     if clean_attributes:
@@ -220,10 +230,10 @@ def extract_detailed_trace_attributes_csv(trace_labels_file_path,
     return featured_data_attributes, features_names_attributes
 
 
-def extract_detailed_trace_performances_csv(trace_labels_file_path,
-                                            output_path,
-                                            label_feature_index=1,
-                                            clean_attributes=True):
+def extract_detailed_performances_csv(trace_labels_file_path,
+                                      label_feature_index=1,
+                                      performances_index=-3,
+                                      clean_attributes=True):
     """
     Return a matrix where the rows are the performances and the columns are the traces, and
     each cell contains the value of the performance
@@ -243,10 +253,24 @@ def extract_detailed_trace_performances_csv(trace_labels_file_path,
         for line in csv_file:
             if header:
                 # BEWARE if index goes out of range it does not rise exception
-                features_names_performances = line[-3:]
+                if performances_index < 0:
+                    features_names_performances = line[performances_index:]
+                else:
+                    if performances_index > label_feature_index > 2:
+                        features_names_performances = line[2:label_feature_index] + line[
+                                                                                    label_feature_index + 1:performances_index]
+                    else:
+                        features_names_performances = line[2:performances_index]
                 header = False
             else:
-                featured_data_performances += [line[-3:]]
+                if performances_index < 0:
+                    featured_data_performances += [line[performances_index:]]
+                else:
+                    if performances_index > label_feature_index > 2:
+                        featured_data_performances += [line[2:label_feature_index] + line[
+                                                                                     label_feature_index + 1:performances_index]]
+                    else:
+                        featured_data_performances += [line[2:performances_index]]
 
     featured_data_performances = pd.DataFrame(featured_data_performances, columns=features_names_performances)
     if clean_attributes:

@@ -61,6 +61,22 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         type=int,
         widget='IntegerField', default=0)
 
+    parser_decision_tree_logs_to_clusters.add_argument(
+        '-p', '--split-perspective',
+        help='Perspective upon which splitting the nodes of the tree',
+        type=str, widget='Dropdown',
+        choices=['rules',
+                 'attributes',
+                 # 'specific-attribute',
+                 'performances',
+                 'mixed'],
+        default='rules')
+    parser_decision_tree_logs_to_clusters.add_argument(
+        '-m', '--rules-measures',
+        help='Path to the Janus CSV file trace/log measures (needed only if split-perspective is "rules" or "mixed")',
+        type=str,
+        widget='FileChooser', required=True)
+
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> DECISION TREE TRACES 2 CLUSTERS PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_decision_tree_traces_to_clusters = subparsers.add_parser(
@@ -209,9 +225,9 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         temp_transposed_trace_measures_file = os.path.join(os.path.dirname(args.output_file), "focus.csv")
         if not os.path.exists(temp_transposed_trace_measures_file):
             print("Transposing data...")
-            j3io.extract_detailed_trace_perspective_csv(args.input_featured_data,
-                                                        temp_transposed_trace_measures_file,
-                                                        measure="Confidence")
+            j3io.extract_detailed_trace_rules_perspective_csv(args.input_featured_data,
+                                                              temp_transposed_trace_measures_file,
+                                                              measure="Confidence")
         else:
             print("Transposed data already exists")
         if branching_policy == "static-frequency":
@@ -247,10 +263,10 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         elif split_policy == 'attributes':
             # ATTRIBUTES
             print("attributes-only decision tree")
-            featured_data, labels, features_names, selected_feature_name = import_trace_labels_attributes(
+            featured_data, labels, features_names, selected_feature_name = import_labels_attributes(
                 args.input_featured_data,
-                focussed_csv,
-                args.classification_feature_index)
+                args.classification_feature_index,
+                -3)
         elif split_policy == 'specific-attribute':
             # SPECIFIC ATTRIBUTE
             print("split on single specific attribute not yet implemented")
@@ -258,10 +274,10 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         elif split_policy == 'performances':
             # PERFORMANCES
             print("performances-only decision tree")
-            featured_data, labels, features_names, selected_feature_name = import_trace_labels_performances(
+            featured_data, labels, features_names, selected_feature_name = import_labels_performances(
                 args.input_featured_data,
-                focussed_csv,
-                args.classification_feature_index)
+                args.classification_feature_index,
+                -3)
         elif split_policy == 'rules':
             # RULES
             print("rules-only decision tree")
@@ -276,11 +292,33 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     elif tree_technique == 'decision-tree-logs-to-clusters':
-        featured_data, labels, features_names, selected_feature_name = import_log_labels_rules(
-            args.input_featured_data,
-            args.classification_feature_index)
+        split_policy = args.split_perspective
+        if split_policy == 'mixed':
+            featured_data, labels, features_names, selected_feature_name = import_log_labels_multi_perspective(
+                args.rules_measures,
+                args.input_featured_data,
+                args.classification_feature_index,
+                12)
+        elif split_policy == 'attributes':
+            featured_data, labels, features_names, selected_feature_name = import_labels_attributes(
+                args.input_featured_data,
+                args.classification_feature_index,
+                12)
+        elif split_policy == 'specific-attribute':
+            print("split on single specific attribute not yet implemented")
+            pass
+        elif split_policy == 'performances':
+            featured_data, labels, features_names, selected_feature_name = import_labels_performances(
+                args.input_featured_data,
+                args.classification_feature_index,
+                12)
+        elif split_policy == 'rules':
+            featured_data, labels, features_names, selected_feature_name = import_log_labels_rules(
+                args.input_featured_data,
+                args.classification_feature_index)
+        else:
+            print("ERROR: Decision tree split policy not recognized")
         retrieve_decision_tree(featured_data, labels, args.output_file, features_names, selected_feature_name)
-
     else:
         print("Decision tree technique not recognized: " + str(tree_technique))
 

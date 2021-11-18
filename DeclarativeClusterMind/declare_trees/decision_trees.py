@@ -12,10 +12,12 @@ The perspectives supported are:
 """
 
 import csv
+import sys
 
 import DeclarativeClusterMind.io.Janus3_import as j3tio
 
 import numpy as np
+import pandas as pd
 from sklearn import tree
 
 
@@ -66,11 +68,12 @@ if more than one measure is present, by default it is take "Confidence"
     # Import labels
     labels, selected_feature_name = import_labels(labels_csv_file, label_feature_index)
     # import data
-    data, constraints_names = j3tio.extract_detailed_trace_perspective_csv(janus_trace_measures_csv, focussed_csv)
+    data, constraints_names = j3tio.extract_detailed_trace_rules_perspective_csv(janus_trace_measures_csv, focussed_csv)
     return data, labels, constraints_names, selected_feature_name
 
 
-def import_trace_labels_multi_perspective(labels_csv_file, j3tree_trace_measures_csv, focussed_csv, label_feature_index=1):
+def import_trace_labels_multi_perspective(labels_csv_file, j3tree_trace_measures_csv, focussed_csv,
+                                          label_feature_index=1, performances_index=-3):
     """
 Imports the featured data for each trace of the event log and import it for decision tree building.
 All the features except the performances are considered.
@@ -96,19 +99,25 @@ if more than one measure is present, by default it is take "Confidence"
     data, features_names = j3tio.extract_detailed_trace_multi_perspective_csv(j3tree_trace_measures_csv,
                                                                               labels_csv_file,
                                                                               focussed_csv,
-                                                                              label_feature_index)
+                                                                              label_feature_index,
+                                                                              performances_index)
     return data, labels, features_names, selected_feature_name
 
 
-def import_trace_labels_attributes(labels_csv_file, focussed_csv, label_feature_index=1):
+def import_labels_attributes(labels_csv_file, label_feature_index=1, performances_index=-3):
     """
 Imports the featured data for each trace of the event log and import it for decision tree building.
 Only the attributes are considered as features.
 Only numerical attributes are supported by SciKit, categorical data are discarded.
-# todo handle categorical attributes (at least the true/false ones in 1/0)
 
-The labels file header has the following structure:
+The labels file header has the following structure for TRACES:
 TRACE-INDEX | CLUSTER | ATTRIBUTE_1 | ... | ATTRIBUTE_n | case-duration | case-length | case-unique-tasks
+label_feature_index=1, performances_index=-3
+
+The labels file header has the following structure for CLUSTERS:
+CLUSTER_NUM | TRACES | TRACE-LEN-AVG	TRACE-LEN-MIN	TRACE-LEN-MAX	DURATION-MEDIAN	DURATION-MIN	DURATION-MAX	CASE-ARRIVAL-AVG	VARIANTS-NUM	TASKS-NUM	TASKS
+ | ATTRIBUTE_1 | ... | ATTRIBUTE_n
+label_feature_index=0, performances_index=12
 
 the janus measures file header has the following structure:
 Trace |	Constraint name | measure-1-name |  measure-2-name
@@ -116,20 +125,21 @@ For every column there is only one log measure for each constraint.
 if more than one measure is present, by default it is take "Confidence"
 
     :param labels_csv_file:
-    :param focussed_csv:
     :param label_feature_index:
+    :param performances_index: index to skip the performances attributes
+                            (if negative cut the tail, if positive cut the head)
     :return:
     """
     # Import labels
     labels, selected_feature_name = import_labels(labels_csv_file, label_feature_index)
     # import data
-    data, features_names = j3tio.extract_detailed_trace_attributes_csv(labels_csv_file,
-                                                                       focussed_csv,
-                                                                       label_feature_index)
+    data, features_names = j3tio.extract_detailed_attributes_csv(labels_csv_file,
+                                                                 label_feature_index,
+                                                                 performances_index)
     return data, labels, features_names, selected_feature_name
 
 
-def import_trace_labels_performances(labels_csv_file, focussed_csv, label_feature_index=1):
+def import_labels_performances(labels_csv_file, label_feature_index=1, performances_index=-3):
     """
 Imports the featured data for each trace of the event log and import it for decision tree building.
 Only the performances are considered as features: case-duration, case-length, case-unique-tasks.
@@ -137,6 +147,12 @@ Usually case-duration is the only one which matter.
 
 The labels file header has the following structure:
 TRACE-INDEX | CLUSTER | ATTRIBUTE_1 | ... | ATTRIBUTE_n | case-duration | case-length | case-unique-tasks
+label_feature_index=1, performances_index=-3
+
+The labels file header has the following structure for CLUSTERS:
+CLUSTER_NUM | TRACES | TRACE-LEN-AVG	TRACE-LEN-MIN	TRACE-LEN-MAX	DURATION-MEDIAN	DURATION-MIN	DURATION-MAX	CASE-ARRIVAL-AVG	VARIANTS-NUM	TASKS-NUM	TASKS
+ | ATTRIBUTE_1 | ... | ATTRIBUTE_n
+label_feature_index=0, performances_index=12
 
 the janus measures file header has the following structure:
 Trace |	Constraint name | measure-1-name |  measure-2-name
@@ -144,16 +160,16 @@ For every column there is only one log measure for each constraint.
 if more than one measure is present, by default it is take "Confidence"
 
     :param labels_csv_file:
-    :param focussed_csv:
     :param label_feature_index:
+    :param performances_index:
     :return:
     """
     # Import labels
     labels, selected_feature_name = import_labels(labels_csv_file, label_feature_index)
     # import data
-    data, features_names = j3tio.extract_detailed_trace_performances_csv(labels_csv_file,
-                                                                         focussed_csv,
-                                                                         label_feature_index)
+    data, features_names = j3tio.extract_detailed_performances_csv(labels_csv_file,
+                                                                   label_feature_index,
+                                                                   performances_index)
     return data, labels, features_names, selected_feature_name
 
 
@@ -188,6 +204,55 @@ for every column there is only one log measure for each constraint
             data += [[float(constraint) for constraint in line[:label_feature_index] + line[label_feature_index + 1:]]]
 
     return data, labels, constraints_names, feature_name
+
+
+def import_log_labels_multi_perspective(measures_csv_file,
+                                        attributes_performances_csv_file,
+                                        label_feature_index=0,
+                                        performances_index=12):
+    """
+Imports the featured data aggregate at the level of the event log and import it for decision tree building.
+
+The file header has the following structure: CLUSTER | CONSTRAINT_1 | ... | CONSTRAINT_n
+for every column there is only one log measure for each constraint
+    :param measures_csv_file:
+    :param label_feature_index:
+    :return:
+    """
+    # Import labels rulse
+    data_rules, labels_rules, features_names_rules, feature_name_rules = import_log_labels_rules(measures_csv_file,
+                                                                                                 label_feature_index)
+    # Import labels attributes
+    data_attributes, labels_attributes, features_names_attributes, feature_name_attributes = import_labels_attributes(
+        attributes_performances_csv_file, label_feature_index, performances_index)
+    # Import labels performances
+    data_performances, labels_performances, features_names_performances, feature_name_performances = import_labels_performances(
+        attributes_performances_csv_file, label_feature_index, performances_index)
+
+    if feature_name_rules != feature_name_performances != feature_name_attributes:
+        print("ERROR labels between rules and attributes do not match!")
+        sys.exit(1)
+    feature_name = feature_name_rules
+
+    data = np.concatenate([pd.DataFrame(data_rules, columns=features_names_rules),
+                           data_attributes
+                              , data_performances
+                           ], axis=1)
+
+    if len(labels_rules) != len(labels_attributes) != len(labels_performances):
+        print("ERROR different number of labels between rules and attributes!")
+        sys.exit(1)
+    labels = set(labels_rules)
+    labels.update(set(labels_attributes))
+    labels.update(set(labels_performances))
+    labels = sorted(list(labels))
+
+    features_names = np.concatenate([features_names_rules,
+                                     features_names_attributes
+                                        , features_names_performances
+                                     ])
+
+    return data, labels, features_names, feature_name
 
 
 def retrieve_decision_tree(featured_data, labels, output_file, features_names, selected_feature_name,
@@ -243,10 +308,36 @@ This part is common to any perspective chosen at previous step.
         clf = clf.fit(featured_data, current_labels)
         tree.plot_tree(clf)
         tree.export_graphviz(clf,
-                             out_file=output_file + "_" + selected_feature_name + "_" + cluster + ".dot",
+                             # out_file=output_file + "_" + selected_feature_name + "_" + cluster + ".dot",
+                             out_file=output_file + "_" + cluster + ".dot",
                              feature_names=features_names,
                              class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
                              filled=True,
                              rounded=True,
                              # special_characters = True
                              )
+
+# if __name__ == '__main__':
+#     log_attributes_csv_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/clusters-stats.csv"
+#     trace_measures_csv_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/2-merged-log/SEPSIS_age-output[tracesMeasures].csv"
+#     log_measures_csv_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/clusters-labels.csv"
+#     trace_labels_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/traces-labels.csv"
+#     output_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/TEST.dot"
+#
+#     focus = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/focus.csv"
+#     trace_stats="/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLORATION/SEPSIS/clusters_rules-treeSplit_rules/3-results/traces-labels.csv"
+#
+#     # data, labels, features_names, selected_feature_name = import_log_labels_rules(log_measures_csv_file, 0)
+#     # data, labels, features_names, selected_feature_name = import_labels_attributes(log_attributes_csv_file, 0, 12)
+#     # data, labels, features_names, selected_feature_name = import_labels_performances(log_attributes_csv_file, 0, 12)
+#     # data, labels, features_names, selected_feature_name = import_log_labels_multi_perspective(log_measures_csv_file,log_attributes_csv_file,0, 12)
+#
+#     # data, labels, features_names, selected_feature_name = import_trace_labels_rules(trace_labels_file,
+#     #                                                                                 trace_measures_csv_file,
+#     #                                                                                 focus,
+#     #                                                                                 1)
+#     # data, labels, features_names, selected_feature_name = import_labels_attributes(trace_stats, 1, -3)
+#     # data, labels, features_names, selected_feature_name = import_labels_performances(trace_stats, 1, -3)
+#     # data, labels, features_names, selected_feature_name = import_trace_labels_multi_perspective(trace_stats,trace_measures_csv_file,focus,1, -3)
+#
+#     retrieve_decision_tree(data, labels, output_file, features_names, selected_feature_name)

@@ -7,7 +7,7 @@ import DeclarativeClusterMind.io.Janus3_import as j3tio
 
 
 def compute_silhouette_from_trace_measures_files(trace_measures_csv_file, labels_file, plot_file=None):
-    input_2d, constraints_names = j3tio.extract_detailed_trace_perspective_csv(trace_measures_csv_file)
+    input_2d, constraints_names = j3tio.extract_detailed_trace_rules_perspective_csv(trace_measures_csv_file)
     input_2d = pd.DataFrame(input_2d, columns=constraints_names)
     input_2d = np.nan_to_num(input_2d, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
     labels = pd.read_csv(labels_file, delimiter=';').CLUSTER
