@@ -100,6 +100,7 @@ def export_cluster_statistics_multi_perspective(logs, output_csv_file):
               'TASKS']
     header += all_events_attributes
 
+    print(f"Writing stats in {output_csv_file} ...")
     # retrieve and output stats
     with open(output_csv_file, 'w') as output:
         csv_out = csv.writer(output, delimiter=';')

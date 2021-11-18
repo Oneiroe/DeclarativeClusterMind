@@ -8,8 +8,10 @@ Currently the following analysis are supported:
 
 from gooey import Gooey, GooeyParser
 
+from DeclarativeClusterMind.evaluation.clusters_statistics import plot_clusters_performances_box_plots, \
+    export_cluster_statistics_multi_perspective
 from DeclarativeClusterMind.evaluation.silhouette_score import compute_silhouette_from_trace_measures_files
-from evaluation import f1_score, utils
+from DeclarativeClusterMind.evaluation import f1_score, utils
 
 
 @Gooey(
@@ -68,15 +70,38 @@ def main():
     # SILHOUETTE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_silhouette = subparsers.add_parser("silhouette",
                                               description="Silhouette measure of the clusters based on trace measures",
-                                              help="Silhouette measure of clusters based on trace measures", parents=[parent_parser])
+                                              help="Silhouette measure of clusters based on trace measures",
+                                              parents=[parent_parser])
     parser_silhouette.add_argument('-i', '--input-trace-measures',
-                                     help='Path to the trace measures CVS',
-                                     type=str,
-                                     widget='FileChooser', required=True)
+                                   help='Path to the trace measures CVS',
+                                   type=str,
+                                   widget='FileChooser', required=True)
     parser_silhouette.add_argument('-l', '--labels-file',
-                                     help='Path to the trace labels CVS',
-                                     type=str,
-                                     widget='FileChooser', required=True)
+                                   help='Path to the trace labels CVS',
+                                   type=str,
+                                   widget='FileChooser', required=True)
+
+    # PERFORMANCES parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_performances = subparsers.add_parser("performances",
+                                                description="Plot the performances box-plots of the clusters",
+                                                help="Plot the performances box-plots of the clusters",
+                                                parents=[parent_parser])
+    parser_performances.add_argument('-iLf', '--input-logs-folder',
+                                     help='Path to the folder containing the clusters event logs', type=str,
+                                     widget='DirChooser', required=True)
+    parser_performances.add_argument(
+        '-v', '--visualize-immediately',
+        help='Flag to enable immediate pop-up visualization of the result',
+        action="store_true", widget='BlockCheckbox')
+
+    # STATS parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    parser_stats = subparsers.add_parser("stats",
+                                         description="Retrieve the multi-perspective statistics of the clusters",
+                                         help="Retrieve the multi-perspective statistics of the clusters",
+                                         parents=[parent_parser])
+    parser_stats.add_argument('-iLf', '--input-logs-folder',
+                                     help='Path to the folder containing the clusters event logs', type=str,
+                                     widget='DirChooser', required=True)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -100,13 +125,18 @@ def main():
     elif metric == 'aggregate-f1':
         f1_score.aggregate_f1_results(args.input_base_folder, args.output_file, args.plot_file)
     elif metric == 'silhouette':
+        print("WARNING!!! This feature is still experimental")
         compute_silhouette_from_trace_measures_files(args.input_trace_measures,
                                                      args.labels_file,
                                                      args.output_file)
     elif metric == 'performances':
-        print('To Interface performances boxplot') # TODO
+        clusters_logs = utils.load_clusters_logs_map_from_folder(args.input_logs_folder)
+        plot_clusters_performances_box_plots(clusters_logs,
+                                             args.output_file,
+                                             args.visualize_immediately)
     elif metric == 'stats':
-        print('To Interface clusters stats export')  # TODO
+        clusters_logs = utils.load_clusters_logs_map_from_folder(args.input_logs_folder)
+        export_cluster_statistics_multi_perspective(clusters_logs, args.output_file)
 
 
 if __name__ == '__main__':

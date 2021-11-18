@@ -22,7 +22,7 @@ DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
 DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
 
-LOG_NAME="WSVX"
+LOG_NAME="SEPSIS_age"
 # "MANUAL"
 # "SEPSIS_age"
 # "BPIC15_f"
@@ -108,7 +108,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
     echo "$FILE already exists."
   else
     java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON "${CURRENT_MODEL}"
-#    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
+    #    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
     if test -f "${CONSTRAINTS_TEMPLATE_BLACKLIST}"; then
@@ -174,17 +174,14 @@ python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $P
 
 cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
-cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
 cp ${PROCESSED_DATA_FOLDER}"/clusters-labels.csv" $RESULTS_FOLDER"/clusters-labels.csv"
-cp ${PROCESSED_DATA_FOLDER}/performances_boxplot* $RESULTS_FOLDER
-cp ${PROCESSED_DATA_FOLDER}/silhouette* $RESULTS_FOLDER
 if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
   cp $PROCESSED_DATA_FOLDER"/pca-features.csv" $RESULTS_FOLDER"/pca-features.csv"
 fi
 
 # Build decision-Tree
 echo "################################ SIMPLE TREES Clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters \
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   -o $RESULT_DECLARE_TREE_CLUSTERS"-Decreasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
@@ -192,7 +189,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
   $MINIMIZATION_FLAG \
   -decreasing
 
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters \
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
@@ -222,3 +219,18 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-tr
   $MINIMIZATION_FLAG \
   $BRANCHING_ORDER_DECREASING_FLAG \
   -mls 100
+
+echo "################################ DESCRIPTIVE Stats"
+# STATS
+python3 -m DeclarativeClusterMind.ui_evaluation --ignore-gooey performances \
+  -iLf $PROCESSED_DATA_FOLDER \
+  -o $RESULTS_FOLDER"/performances_boxplot.svg"
+# Performances
+python3 -m DeclarativeClusterMind.ui_evaluation --ignore-gooey stats \
+  -iLf $PROCESSED_DATA_FOLDER \
+  -o $RESULTS_FOLDER"/clusters-stats.csv"
+# external Declarative silhouette
+python3 -m DeclarativeClusterMind.ui_evaluation --ignore-gooey silhouette \
+  -i ${OUTPUT_TRACE_MEASURES_CSV} \
+  -l $RESULTS_FOLDER"/traces-labels.csv" \
+  -o $RESULTS_FOLDER"/silhouette.svg"

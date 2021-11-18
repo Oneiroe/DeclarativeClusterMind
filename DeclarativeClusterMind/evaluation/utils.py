@@ -117,7 +117,7 @@ def load_clusters_logs_map_from_folder(folder_path):
     for log_file in os.listdir(folder_path):
         if log_file.endswith(".xes"):
             counter += 1
-            result[log_file[:-4]]= pm.read_xes(os.path.join(folder_path, log_file))
+            result[log_file[:-4]] = pm.read_xes(os.path.join(folder_path, log_file))
     print(f"Loaded {counter} clusters logs")
     return result
 
