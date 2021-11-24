@@ -29,6 +29,7 @@ LOG_NAME="SEPSIS_age"
 # "BPIC15_f_participation"
 # "WSVX"
 # "COVID"
+# "CITY-SPIN_CAD"
 #
 # "BPIC12"
 # "BPIC13"
@@ -107,7 +108,7 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
   if test -f "${CURRENT_MODEL}"; then
     echo "$FILE already exists."
   else
-    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON "${CURRENT_MODEL}"
+    java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON "${CURRENT_MODEL}" -vShush
     #    $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${CURRENT_MODEL} -vShush
 
     # Filter undesired templates, e.g., NotSuccession or NotChainSuccession
@@ -170,7 +171,7 @@ fi
 # merge results
 python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
 python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
-python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER
+python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER "traces-labels.csv"
 
 cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"

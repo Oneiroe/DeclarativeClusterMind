@@ -16,17 +16,15 @@ ERROR_MAINCLASS="minerful.MinerFulErrorInjectedLogMakerStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
-LOG_NAME="CitySPIN-stations"
+LOG_NAME="BPIC15_f"
+# "BPIC15_f"
+# "BPIC15_1f"
 # "BPIC12"
 # "BPIC13"
 # "SEPSIS"
 # "RTFMP"
-# "BPIC15_1f"
-# "BPIC15_f"
 # "BPIC17_f"
 # "WSVX"
-# "WSV_YCL_2019"
-# "CitySPIN-stations"
 
 CLUSTERING_POLICY="rules"
 # 'rules'
@@ -40,11 +38,21 @@ SPLIT_POLICY="rules"
 # 'specific-attribute'
 # 'performances'
 # 'mixed'
+CLUSTERING_ALGORITHM="affinity"
+#        'kmeans',  # 0
+#        'affinity',  # 1
+#        'meanshift',  # 2
+#        'agglomerative',  # 3
+#        'spectral',  # 4
+#        'dbscan',  # 5
+#        'optics',  # 6
+#        'birch',  # 7
+#        'gaussian',  # 8 DO NOT USE THIS!
 
 # experiment folders
-EXPERIMENT_NAME="experiments/REAL-LIFE-EXPLORATION/"${LOG_NAME}"/clusters_"${CLUSTERING_POLICY}"-treeSplit_"${SPLIT_POLICY}
-INPUT_FOLDER="experiments/REAL-LIFE-EXPLORATION/00-INPUT-LOGS-MODELS"
-PREPROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/1-measurements"
+EXPERIMENT_NAME="experiments/GROUND-TRUTH/"${LOG_NAME}"/clusters_"${CLUSTERING_POLICY}"-algorithm_"${CLUSTERING_ALGORITHM}
+INPUT_FOLDER="experiments/GROUND-TRUTH/00-INPUT-LOGS-MODELS"
+PREPROCESSED_DATA_FOLDER="experiments/GROUND-TRUTH/00-MERGED-LOGS"
 PROCESSED_DATA_FOLDER=$EXPERIMENT_NAME"/2-clustered-logs"
 RESULTS_FOLDER=$EXPERIMENT_NAME"/3-results"
 mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DATA_FOLDER $RESULTS_FOLDER
@@ -55,16 +63,7 @@ mkdir -p $EXPERIMENT_NAME $INPUT_FOLDER $PREPROCESSED_DATA_FOLDER $PROCESSED_DAT
 # 'attributes'
 # 'specific-attribute'
 # 'mixed'
-CLUSTERING_ALGORITHM="optics"
-#        'kmeans',  # 0
-#        'affinity',  # 1
-#        'meanshift',  # 2
-#        'agglomerative',  # 3
-#        'spectral',  # 4
-#        'dbscan',  # 5
-#        'optics',  # 6
-#        'birch',  # 7
-#        'gaussian',  # 8 DO NOT USE THIS!
+
 #BOOLEAN_RULES="True"
 BOOLEAN_RULES="-b"
 #BOOLEAN_RULES=""
@@ -98,7 +97,7 @@ BRANCHING_ORDER_DECREASING_FLAG="-decreasing"
 
 # Input log
 #LOG_NAME="BPIC13"
-INPUT_LOG=$INPUT_FOLDER"/"$LOG_NAME"-log.xes"
+INPUT_LOG=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-log.xes"
 LOG_ENCODING="xes"
 
 # Discovery & Measurements
@@ -118,17 +117,25 @@ OUTPUT_TRACE_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMe
 OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tracesMeasuresStats].csv"
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
-JAVA_BIN="/home/alessio/Software/jdk/jdk-11.0.10/bin/java"
-DISCOVERY_JAR="/home/alessio/Data/Phd/code_3rd_party/MINERful/MINERful.jar"
-DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
-DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
-DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
-
+ORIGINAL_TRACES_LABELS=$INPUT_FOLDER"/original-traces-labels.csv"
 
 ##################################################################
 # SCRIPT
 ##################################################################
 #
+# label traces according to real clusters
+if test -f "${ORIGINAL_TRACES_LABELS}"; then
+    echo "$ORIGINAL_TRACES_LABELS already exists. Traces already labeled"
+else
+  python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $INPUT_FOLDER $ORIGINAL_TRACES_LABELS
+fi
+# merge logs
+if test -f "${INPUT_LOG}"; then
+  echo "$INPUT_LOG already exists. Logs already merged"
+else
+  python3 DeclarativeClusterMind/utils/merge_logs.py $INPUT_LOG $INPUT_FOLDER"/"*.xes
+fi
+
 # Discover process model (if not existing)
 echo "${MODEL}"
 echo "################################ DISCOVERY"
@@ -136,11 +143,11 @@ if test -f "${MODEL}"; then
   echo "$FILE already exists."
 else
   java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -oJSON ${MODEL}
-#  $JAVA_BIN -cp $DISCOVERY_JAR $DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $DISCOVERY_CONFIDENCE -s $DISCOVERY_SUPPORT -oJSON ${MODEL} -vShush
+  #  java -cp Janus.jar $JANUS_DISCOVERY_MAINCLASS -iLF $INPUT_LOG -iLE $LOG_ENCODING -c $CONFIDENCE -s $SUPPORT -i 0 -keep -oJSON ${MODEL}
 
   # Simplify model, i.e., remove redundant constraints
   echo "################################ SIMPLIFICATION"
-  java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
+#  java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $MODEL -iME $MODEL_ENCODING -oJSON $MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
 fi
 
 # Retrieve measure
@@ -163,78 +170,13 @@ echo "################################ CLUSTERING"
 if [ $CLUSTERING_POLICY == "rules" ] || [ $CLUSTERING_POLICY == "mixed" ]; then
   python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
 else
-  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG -nc $CLUSTERS_NUMBER $APPLY_PCA_FLAG
+  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER
 fi
 
-# Retrieve measures for each cluster
-echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
-for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
-  echo $INPUT_LOG
-  OUTPUT_CHECK_CSV="${INPUT_LOG}""-output.csv"
-  OUTPUT_CHECK_JSON="${INPUT_LOG}""-output.json"
-  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure Confidence 
-  #  java -cp Janus.jar $JANUS_CHECK_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$OUTPUT_CHECK_CSV" -oJSON "$OUTPUT_CHECK_JSON" -d none -detailsLevel log -measure Confidence
-
-  #  -nanLogSkip,--nan-log-skip                            Flag to skip or not NaN values when computing log measures
-  #  -nanTraceSubstitute,--nan-trace-substitute            Flag to substitute or not the NaN values when computing trace measures
-  #  -nanTraceValue,--nan-trace-value <number>
-
-  #  keep only mean
-  #  python3 pySupport/singleAggregationPerspectiveFocusCSV_confidence-only.py "${OUTPUT_CHECK_JSON}AggregatedMeasures.json" "${INPUT_LOG}""-output[MEAN].csv"
-done
-
-# merge results
-python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
-python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
-
-cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
-cp ${PROCESSED_DATA_FOLDER}/*stats.csv $RESULTS_FOLDER"/clusters-stats.csv"
+# compare traces labels
+echo "################################ COMPARING LABELS"
 cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
-cp ${PROCESSED_DATA_FOLDER}"/clusters-labels.csv" $RESULTS_FOLDER"/clusters-labels.csv"
-cp ${PROCESSED_DATA_FOLDER}/performances_boxplot* $RESULTS_FOLDER
-cp ${PROCESSED_DATA_FOLDER}/silhouette* $RESULTS_FOLDER
-if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
-  cp $PROCESSED_DATA_FOLDER"/pca-features.csv" $RESULTS_FOLDER"/pca-features.csv"
-fi
+cp $ORIGINAL_TRACES_LABELS $RESULTS_FOLDER"/traces-labels-original.csv"
 
-# Build decision-Tree
-echo "################################ DECLARE TREES"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
-  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  -o $RESULT_DECLARE_TREE_CLUSTERS"-Decreasing.dot" \
-  -t $CONSTRAINTS_THRESHOLD \
-  -p $BRANCHING_POLICY \
-  $MINIMIZATION_FLAG \
-  -decreasing
+python3 -m DeclarativeClusterMind.evaluation.compare_traces_labels $RESULTS_FOLDER"/traces-labels-original.csv" $RESULTS_FOLDER"/traces-labels.csv" $RESULTS_FOLDER"/matrix-result.csv"
 
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
-  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
-  -t $CONSTRAINTS_THRESHOLD \
-  -p $BRANCHING_POLICY \
-  $MINIMIZATION_FLAG
-
-echo "################################ DECISION TREES logs to clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters\
-  -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
-  -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
-  -fi 0
-
-echo "################################ DECISION TREES traces to clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-traces-to-clusters\
-  -i ${RESULTS_FOLDER}"/traces-labels.csv" \
-  -o ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
-  -fi 1 \
-  -m "$OUTPUT_TRACE_MEASURES_CSV" \
-  -p ${SPLIT_POLICY}
-
-
-echo "################################ SIMPLE TREES Traces"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-traces \
-  -i ${OUTPUT_TRACE_MEASURES_CSV} \
-  -o $RESULT_DECLARE_TREE_TRACES \
-  -t $CONSTRAINTS_THRESHOLD \
-  -p $BRANCHING_POLICY \
-  $MINIMIZATION_FLAG \
-  $BRANCHING_ORDER_DECREASING_FLAG \
-  -mls 100
