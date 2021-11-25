@@ -21,11 +21,11 @@ returns a label file where each row refer to a cluster and each column is a cons
                     if line[0] == "Constraint":
                         # TODO too adhoc naming
                         if "xes" in file:
-                            cluster_name = "Cluster_" + str(file.split(".xes" + files_suffix)[0].split('cluster_')[-1])
+                            cluster_name = str(file.split(".xes" + files_suffix)[0].split('cluster_')[-1])
                         elif "csv" in file:
-                            cluster_name = "Cluster_" + str(file.split("[logMeasures]")[0].split('output_')[-1])
+                            cluster_name = str(file.split("[logMeasures]")[0].split('output_')[-1])
                         else:
-                            cluster_name = "Cluster_" + str(file)
+                            cluster_name = str(file)
                         result_map[cluster_name] = {}
                     else:
                         result_map[cluster_name][line[0]] = [line[1]]
