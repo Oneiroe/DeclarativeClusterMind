@@ -16,7 +16,7 @@ ERROR_MAINCLASS="minerful.MinerFulErrorInjectedLogMakerStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_CHECK_MAINCLASS="minerful.JanusMeasurementsStarter"
 
-LOG_NAME="CitySPIN-stations"
+LOG_NAME="SEPSIS"
 # "BPIC12"
 # "BPIC13"
 # "SEPSIS"
@@ -103,9 +103,9 @@ LOG_ENCODING="xes"
 
 # Discovery & Measurements
 SUPPORT=0.0
-CONFIDENCE=0.9
-#MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
-MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"]-SIMPLIFIED.json"
+CONFIDENCE=0.90
+MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"].json"
+#MODEL=$INPUT_FOLDER"/"$LOG_NAME".xes-model[s_"$SUPPORT"_c_"$CONFIDENCE"]-SIMPLIFIED.json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[GROUND-TRUTH].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[PARTICIPATION].json"
 #MODEL=$INPUT_FOLDER"/"$LOG_NAME"-model[ABSENCE].json"
@@ -215,9 +215,11 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
   $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES logs to clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
+  -p ${SPLIT_POLICY} \
+  -m None \
   -fi 0
 
 echo "################################ DECISION TREES traces to clusters"

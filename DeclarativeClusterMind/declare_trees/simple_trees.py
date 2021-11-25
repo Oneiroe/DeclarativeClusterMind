@@ -22,6 +22,8 @@ from pm4py.objects.log.exporter.xes import exporter as xes_exporter
 
 import graphviz
 
+from DeclarativeClusterMind.io.Janus3_import import extract_detailed_trace_rules_perspective_csv
+
 
 class ClusterNode:
     def __init__(self, constraint=None, threshold=0.8):
@@ -390,7 +392,7 @@ def get_most_variant_constraint(cluster_table, clusters, used_constraints, rever
 def build_declare_tree_dynamic(clusters_file,
                                constraint_measure_threshold,
                                branching_policy,
-                               output_file,
+                               output_file=None,
                                minimize=True,
                                reverse=True,
                                min_leaf_size=0,
@@ -465,10 +467,11 @@ Constraints are reordered in each sub-branch according to the frequency in the r
         print("Minimizing tree...")
         minimize_tree(result_tree)
 
-    print("Graphviz output...")
-    graph = graphviz.Digraph(format='svg')
-    print_tree_graphviz(graph, result_tree, min_leaf_size > 0.0)
-    graph.render(filename=output_file)
+    if output_file is not None:
+        print("Graphviz output...")
+        graph = graphviz.Digraph(format='svg')
+        print_tree_graphviz(graph, result_tree, min_leaf_size > 0.0)
+        graph.render(filename=output_file)
 
     return result_tree
 
@@ -562,3 +565,59 @@ It build clusters sub-logs from the leaves of the tree
     graph = graphviz.Digraph(format='svg')
     print_tree_graphviz(graph, tree_root, True)
     graph.render(filename=os.path.join(output_folder, "Clusters_tree.dot"))
+
+
+def evaluate_simple_tree_against_labeled_traces(labeled_traces_csv, traces_measures_csv, simple_tree):
+    """
+Given a featured event log where each trace has the constraints trace measures and the cluster label,
+check the percentage of correctly classified traces
+
+It is expected that the header of the labels csv to be like the following:
+TRACE	CLUSTER
+
+BROKEN: we cannot use a log measure to classify according to traces measures. problematic examples:
+- if Resp(x,y): 0.33 means that all of all the traces containing X 33% was followed by Y,
+    yet it does say nothing about the other traces without x, i.e.,
+    Resp(x,y) will not classify the other traces of the same clusters without the occurrence of x
+
+
+    :param labeled_traces_csv:
+    :param traces_measures_csv:
+    :param simple_tree:
+    """
+
+    print("Importing traces measures...")
+    constraints_traces_measures, constraints_names = extract_detailed_trace_rules_perspective_csv(traces_measures_csv)
+
+    result = 0
+    traces_num = len(constraints_traces_measures)
+
+    print("checking accuracy...")
+    with open(labeled_traces_csv, 'r') as traces_file:
+        csv_labels_reader = csv.DictReader(traces_file, delimiter=';')
+        for trace in csv_labels_reader:
+            real_class = trace["CLUSTER"]
+            curr_node = simple_tree
+            while True:
+                if curr_node.nan is None and curr_node.ok is None and curr_node.nok is None:
+                    break
+                curr_constraint = curr_node.constraint
+                curr_threshold = curr_node.threshold
+                curr_value = constraints_traces_measures[int(trace['TRACE'])][constraints_names.index(curr_constraint)]
+                if curr_value < curr_threshold:
+                    if curr_node.nok is None:
+                        break
+                    curr_node = curr_node.nok
+                elif curr_value >= curr_threshold:
+                    if curr_node.ok is None:
+                        break
+                    curr_node = curr_node.ok
+                else:
+                    if curr_node.nan is None:
+                        break
+                    curr_node = curr_node.nan
+            classified_class = curr_node.clusters
+            if real_class in classified_class:
+                result += 1
+
+    print(f"Correctly classified {result}/{traces_num} thus {result / traces_num}")

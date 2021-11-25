@@ -22,9 +22,13 @@ DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
 DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
 
-LOG_NAME="SEPSIS_age"
+LOG_NAME="SEPSIS_intensiveCare_multiPerspective"
 # "MANUAL"
 # "SEPSIS_age"
+# "SEPSIS_age_intersection"
+# "SEPSIS_SEPSIS_intensiveCare"
+# "SEPSIS_SEPSIS_intensiveCare_intersection"
+# "BPIC15" # ActivityNameEN
 # "BPIC15_f"
 # "BPIC15_f_participation"
 # "WSVX"
@@ -37,7 +41,7 @@ LOG_NAME="SEPSIS_age"
 # "RTFMP"
 # "BPIC17_f"
 
-SPLIT_POLICY="rules"
+SPLIT_POLICY="attributes"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'
@@ -94,6 +98,7 @@ OUTPUT_TRACE_MEASURES_STATS_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[tr
 OUTPUT_LOG_MEASURES_CSV=$PREPROCESSED_DATA_FOLDER"/"$LOG_NAME"-output[logMeasures].csv"
 
 CONSTRAINTS_TEMPLATE_BLACKLIST=${PROCESSED_DATA_FOLDER}"/blacklist.csv"
+CONSTRAINTS_TASKS_BLACKLIST=${PROCESSED_DATA_FOLDER}"/blacklist-tasks.csv"
 
 ##################################################################
 # SCRIPT
@@ -115,6 +120,11 @@ for INPUT_LOG in $PROCESSED_DATA_FOLDER"/"*.xes; do
     if test -f "${CONSTRAINTS_TEMPLATE_BLACKLIST}"; then
       python3 -m DeclarativeClusterMind.utils.filter_json_model ${CURRENT_MODEL} ${CONSTRAINTS_TEMPLATE_BLACKLIST} ${CURRENT_MODEL}
     fi
+    # Filter all the rules involving undesired tasks
+    if test -f "${CONSTRAINTS_TASKS_BLACKLIST}"; then
+      python3 -m DeclarativeClusterMind.utils.filter_json_model ${CURRENT_MODEL} ${CONSTRAINTS_TASKS_BLACKLIST} ${CURRENT_MODEL}
+    fi
+
     #    # Simplify model, i.e., remove redundant constraints
     #    echo "################################ SIMPLIFICATION"
     #    java -cp Janus.jar $SIMPLIFIER_MAINCLASS -iMF $CURRENT_MODEL -iME $MODEL_ENCODING -oJSON $CURRENT_MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
@@ -123,6 +133,7 @@ done
 
 ## merge process models
 python3 -m DeclarativeClusterMind.utils.merge_models $PROCESSED_DATA_FOLDER "_model.json" ${MODEL}
+#python3 -m DeclarativeClusterMind.utils.intersect_models $PROCESSED_DATA_FOLDER "_model.json" ${MODEL}
 
 # Retrieve measures for each cluster
 echo "################################ CLUSTERS MEASURES and POSTPROCESSING"
@@ -171,9 +182,9 @@ fi
 # merge results
 python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "aggregated_result.csv"
 python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures $PROCESSED_DATA_FOLDER "-output[logMeasures].csv" "clusters-labels.csv"
-python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER "traces-labels.csv"
+python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $PROCESSED_DATA_FOLDER ${PROCESSED_DATA_FOLDER}/traces-labels.csv
 
-cp ${PROCESSED_DATA_FOLDER}/*traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
+cp ${PROCESSED_DATA_FOLDER}/traces-labels.csv $RESULTS_FOLDER"/traces-labels.csv"
 cp $PROCESSED_DATA_FOLDER"/aggregated_result.csv" $RESULTS_FOLDER"/aggregated_result.csv"
 cp ${PROCESSED_DATA_FOLDER}"/clusters-labels.csv" $RESULTS_FOLDER"/clusters-labels.csv"
 if test -f $PROCESSED_DATA_FOLDER"/pca-features.csv"; then
@@ -190,17 +201,19 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
   $MINIMIZATION_FLAG \
   -decreasing
 
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters \
-  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
-  -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
-  -t $CONSTRAINTS_THRESHOLD \
-  -p $BRANCHING_POLICY \
-  $MINIMIZATION_FLAG
+#python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters \
+#  -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
+#  -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
+#  -t $CONSTRAINTS_THRESHOLD \
+#  -p $BRANCHING_POLICY \
+#  $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES clusters"
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
+  -p ${SPLIT_POLICY} \
+  -m None \
   -fi 0
 
 echo "################################ DECISION TREES traces"
