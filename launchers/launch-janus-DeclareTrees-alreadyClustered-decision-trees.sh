@@ -22,12 +22,14 @@ DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
 DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
 
-LOG_NAME="SEPSIS_intensiveCare_multiPerspective"
+LOG_NAME="SEPSIS_age_multiPerspective"
 # "MANUAL"
 # "SEPSIS_age"
 # "SEPSIS_age_intersection"
-# "SEPSIS_SEPSIS_intensiveCare"
-# "SEPSIS_SEPSIS_intensiveCare_intersection"
+# "SEPSIS_age_multiPerspective"
+# "SEPSIS_intensiveCare"
+# "SEPSIS_intensiveCare_intersection"
+# "SEPSIS_returnER"
 # "BPIC15" # ActivityNameEN
 # "BPIC15_f"
 # "BPIC15_f_participation"
@@ -41,7 +43,7 @@ LOG_NAME="SEPSIS_intensiveCare_multiPerspective"
 # "RTFMP"
 # "BPIC17_f"
 
-SPLIT_POLICY="attributes"
+SPLIT_POLICY="mixed"
 # 'rules'
 # 'attributes'
 # 'specific-attribute'

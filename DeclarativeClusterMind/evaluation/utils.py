@@ -20,16 +20,24 @@ Imports the trace labels for cluster from the csv. order of traces is assumed
     return result
 
 
-def export_traces_clusters_labels(labels, output_csv_path):
+def export_traces_clusters_labels(labels, output_csv_path, header=["TRACE", "CLUSTER"]):
     """
 Export in output the list of trace labels given a clustering
+    :param header:
     :param labels: list
     :param output_csv_path:
     """
     with open(output_csv_path, 'w') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=";")
-        csv_writer.writerow(["TRACE", "CLUSTER"])
-        csv_writer.writerows(enumerate(labels))
+        csv_writer.writerow(header)
+        for index, line in enumerate(labels):
+            out = [index]
+            for x in line:
+                if len(x) == 1:
+                    out += [x[0]]
+                else:
+                    out += [x]
+            csv_writer.writerow(out)
 
 
 def split_log_according_to_clusters(original_xes_log, traces_clusters_labels, output_folder=None):

@@ -91,11 +91,14 @@ class ClusterNode:
         if self.constraint:
             return "[" + self.constraint + "]"
         else:
-            return "<" + str(self.clusters) + ">"
+            if len(str(self.clusters)) > 16000:
+                return "<...>"
+            else:
+                return "<" + str(self.clusters) + ">"
 
 
 def print_tree_graphviz(graph, node, aggregate=False):
-    this_node_code = node.print_node_graphviz() + str(random())
+    this_node_code = str(random())
     if node.constraint:
         this_node = graph.node(this_node_code, label=node.print_node_graphviz())
     else:

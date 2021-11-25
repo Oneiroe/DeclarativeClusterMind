@@ -206,6 +206,8 @@ def get_attributes_statistics_in_trace(current_trace, all_events_attributes):
 def export_traces_labels_multi_perspective(log, clusters, output_file_path):
     """
     Export a csv file containing for each trace the corresponding cluster and values of the attributes
+    :param log:
+    :param clusters:
     :param output_file_path:
     """
     print("Exporting traces cluster labels to " + output_file_path)

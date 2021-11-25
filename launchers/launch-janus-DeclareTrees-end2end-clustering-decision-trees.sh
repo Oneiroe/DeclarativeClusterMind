@@ -215,6 +215,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
   $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES logs to clusters"
+# If mixed: -i clusters-stats.csv and -m clusters-labels.csv
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
