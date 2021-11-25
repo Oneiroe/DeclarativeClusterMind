@@ -22,7 +22,7 @@ DISCOVERY_MAINCLASS="minerful.MinerFulMinerStarter"
 DISCOVERY_SUPPORT=0.9    # support threshold used for the initial discovery of the constraints of the variances
 DISCOVERY_CONFIDENCE=0.0 # confidence threshold used for the initial discovery of the constraints of the variances
 
-LOG_NAME="SEPSIS_age_multiPerspective"
+LOG_NAME="WSV_YCL_2019"
 # "MANUAL"
 # "SEPSIS_age"
 # "SEPSIS_age_intersection"
@@ -34,6 +34,7 @@ LOG_NAME="SEPSIS_age_multiPerspective"
 # "BPIC15_f"
 # "BPIC15_f_participation"
 # "WSVX"
+# "WSV_YCL_2019"
 # "COVID"
 # "CITY-SPIN_CAD"
 #
@@ -211,6 +212,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
 #  $MINIMIZATION_FLAG
 
 echo "################################ DECISION TREES clusters"
+# If mixed: -i clusters-stats.csv and -m clusters-labels.csv
 python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
