@@ -100,14 +100,14 @@ class ClusterNode:
 def print_tree_graphviz(graph, node, aggregate=False):
     this_node_code = str(random())
     if node.constraint:
-        this_node = graph.node(this_node_code, label=node.print_node_graphviz())
+        this_node = graph.node(this_node_code, label=node.print_node_graphviz(), style='rounded', shape='box')
     else:
         if aggregate:
             this_node = graph.node(this_node_code, label=f"[{len(node.clusters)}]", fillcolor="lightblue",
-                                   style='filled')
+                                   style='filled,rounded', shape='box')
         else:
             this_node = graph.node(this_node_code, label=node.print_node_graphviz(), fillcolor="lightblue",
-                                   style='filled')
+                                   style='filled,rounded', shape='box')
 
     if node.ok:
         next_left = print_tree_graphviz(graph, node.ok, aggregate)
