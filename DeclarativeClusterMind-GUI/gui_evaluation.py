@@ -1,4 +1,4 @@
-""" GUI/CLI interface to launch various evaluation functions for clusters
+""" GUI interface to launch various evaluation functions for clusters
 
 Currently the following analysis are supported:
 
@@ -7,6 +7,7 @@ Currently the following analysis are supported:
 """
 
 from gooey import Gooey, GooeyParser
+# from argparse import ArgumentParser
 
 from DeclarativeClusterMind.evaluation.clusters_statistics import plot_clusters_performances_box_plots, \
     export_cluster_statistics_multi_perspective
@@ -21,13 +22,23 @@ from DeclarativeClusterMind.evaluation import f1_score, utils
 )
 def main():
     parent_parser = GooeyParser(add_help=False)
+    # parent_parser = ArgumentParser(add_help=False)
 
-    parent_parser.add_argument('-o', '--output-file', help='Path to file where to save the output', type=str,
-                               widget='FileSaver', required=True)
+    parent_parser.add_argument('-o', '--output-file',
+                               help='Path to file where to save the output',
+                               type=str,
+                               widget='FileSaver',
+                               required=True)
 
     parser = GooeyParser(
-        description="evaluation of clustering results independent form the techniques used. It takes in input only the resulting clustered event logs.")
-    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
+        description="evaluation of clustering results independent form the techniques used. \
+                     It takes in input only the resulting clustered event logs.")
+    parser.add_argument('-v',
+                        '--version',
+                        action='version',
+                        gooey_options={'visible': False},
+                        version='1.0.0'
+                        )
     parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
                         gooey_options={'visible': False})
     subparsers = parser.add_subparsers(help='Available evaluation metrics', dest='metric')
@@ -40,16 +51,19 @@ def main():
                                       parents=[parent_parser])
     parser_f1.add_argument('-iLf', '--input-logs-folder',
                            help='Path to the folder containing the clusters event logs', type=str,
-                           widget='DirChooser', required=True)
+                           widget='DirChooser',
+                           required=True)
     parser_f1.add_argument('-a', '--discovery-algorithm',
                            help='Discovery algorithm to be used for the discovery of clusters models',
-                           type=str, widget='Dropdown',
+                           type=str,
+                           widget='Dropdown',
                            choices=['inductive',
                                     'heuristics'],
                            default='heuristics')
     parser_f1.add_argument('-f', '--fitness-precision-algorithm',
                            help='Fitness/Precision algorithm to be used for the discovery of clusters models',
-                           type=str, widget='Dropdown',
+                           type=str,
+                           widget='Dropdown',
                            choices=['token',
                                     'alignments'],
                            default='token')
@@ -62,10 +76,12 @@ def main():
     parser_f1_aggregate.add_argument('-iLf', '--input-base-folder',
                                      help='Path to the folder containing the sub-folders with the f1-score results',
                                      type=str,
-                                     widget='DirChooser', required=True)
+                                     widget='DirChooser',
+                                     required=True)
     parser_f1_aggregate.add_argument('-p', '--plot-file',
                                      help='Path to the ouput bar-plot file if desired', type=str,
-                                     widget='FileSaver', required=False)
+                                     widget='FileSaver',
+                                     required=False)
 
     # SILHOUETTE parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_silhouette = subparsers.add_parser("silhouette",
@@ -75,11 +91,13 @@ def main():
     parser_silhouette.add_argument('-i', '--input-trace-measures',
                                    help='Path to the trace measures CVS',
                                    type=str,
-                                   widget='FileChooser', required=True)
+                                   widget='FileChooser',
+                                   required=True)
     parser_silhouette.add_argument('-l', '--labels-file',
                                    help='Path to the trace labels CVS',
                                    type=str,
-                                   widget='FileChooser', required=True)
+                                   widget='FileChooser',
+                                   required=True)
 
     # PERFORMANCES parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_performances = subparsers.add_parser("performances",
@@ -88,11 +106,14 @@ def main():
                                                 parents=[parent_parser])
     parser_performances.add_argument('-iLf', '--input-logs-folder',
                                      help='Path to the folder containing the clusters event logs', type=str,
-                                     widget='DirChooser', required=True)
+                                     widget='DirChooser',
+                                     required=True)
     parser_performances.add_argument(
         '-v', '--visualize-immediately',
         help='Flag to enable immediate pop-up visualization of the result',
-        action="store_true", widget='BlockCheckbox')
+        widget='BlockCheckbox',
+        action="store_true"
+    )
 
     # STATS parser >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_stats = subparsers.add_parser("stats",
@@ -100,8 +121,9 @@ def main():
                                          help="Retrieve the multi-perspective statistics of the clusters",
                                          parents=[parent_parser])
     parser_stats.add_argument('-iLf', '--input-logs-folder',
-                                     help='Path to the folder containing the clusters event logs', type=str,
-                                     widget='DirChooser', required=True)
+                              help='Path to the folder containing the clusters event logs', type=str,
+                              widget='DirChooser',
+                              required=True)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 

@@ -8,7 +8,7 @@ import graphviz
 import DeclarativeClusterMind.io.Janus3_import as j3io
 import DeclarativeClusterMind.utils.aggregate_clusters_measures
 import DeclarativeClusterMind.utils.split_log_according_to_declare_model as splitter
-from DeclarativeClusterMind.clustering.cm_clustering import get_attributes_statistics_in_trace
+from DeclarativeClusterMind.clustering.clustering import get_attributes_statistics_in_trace
 from DeclarativeClusterMind.evaluation.clusters_statistics import get_attributes_statistics_in_log
 
 import pm4py as pm
@@ -374,4 +374,4 @@ The recursion ends is:
     # DeclarativeClusterMind.cm_clustering.visualize_silhouette(None, input2D, labels, mean_silhouette)
 
 if __name__ == '__main__':
-    print("Use DeclarativeClusterMind.ui_clustering.py to launch the script via CLI/GUI ")
+    print("Use DeclarativeClusterMind.clustering.py to launch the script via CLI/GUI ")

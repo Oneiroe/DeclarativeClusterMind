@@ -1,4 +1,4 @@
-""" GUI/CLI interface for Declarative Decision Trees
+""" CLI interface for Declarative Decision Trees
 
 Trees supported:
 - simple tree
@@ -16,34 +16,45 @@ perspectives supported:
 
 import os
 
-from gooey import Gooey, GooeyParser
+# from gooey import Gooey, GooeyParser
+from argparse import ArgumentParser
 
-from DeclarativeClusterMind.declare_trees.decision_trees import *
-from DeclarativeClusterMind.declare_trees.simple_trees import build_declare_tree_static, build_declare_tree_dynamic
+from DeclarativeClusterMind.decision_trees.decision_trees import *
+from DeclarativeClusterMind.decision_trees.simple_trees import build_declare_tree_static, build_declare_tree_dynamic
 import DeclarativeClusterMind.io.Janus3_import as j3io
 
 
-@Gooey(
-    program_name='Declarative Decision Trees',
-    program_description='Explanation of clusters differences via decision trees based on declarative rules, log attributes and performances'
-)
+# @Gooey(
+#     program_name='Declarative Decision Trees',
+#     program_description='Explanation of clusters differences via decision trees based on declarative rules, log attributes and performances'
+# )
 def main():
     """
 Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     """
     # Common parameters among decision trees
-    parent_parser = GooeyParser(add_help=False)
+    parent_parser = ArgumentParser(add_help=False)
+    # parent_parser = GooeyParser(add_help=False)
+
     parent_parser.add_argument('-i', '--input-featured-data',
                                help='Path to the input featured data CSV file',
-                               type=str, widget='FileChooser', required=True)
+                               type=str,
+                               # widget='FileChooser',
+                               required=True)
     parent_parser.add_argument('-o', '--output-file',
                                help='Path to the output DOT/SVG tree file',
-                               type=str, widget='FileSaver', required=True)
+                               type=str,
+                               # widget='FileSaver',
+                               required=True)
 
-    parser = GooeyParser(description="Clusters log distinctions explanation via decision trees")
-    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
-    parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
-                        gooey_options={'visible': False})
+    parser = ArgumentParser(description="Clusters log distinctions explanation via decision trees")
+    parser.add_argument('-v', '--version',
+                        action='version',
+                        # gooey_options={'visible': False},
+                        version='1.0.0'
+                        )
+    # parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
+    #                     gooey_options={'visible': False})
     subparsers = parser.add_subparsers(help='Available decision tree options', dest='tree_technique')
     subparsers.required = True
 
@@ -59,12 +70,14 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-fi', '--classification-feature-index',
         help='index of the feature, among the ones in the input featured data, that should be used for the classification (by default CLUSTER column 0)',
         type=int,
-        widget='IntegerField', default=0)
+        # widget='IntegerField',
+        default=0)
 
     parser_decision_tree_logs_to_clusters.add_argument(
         '-p', '--split-perspective',
         help='Perspective upon which splitting the nodes of the tree',
-        type=str, widget='Dropdown',
+        type=str,
+        # widget='Dropdown',
         choices=['rules',
                  'attributes',
                  # 'specific-attribute',
@@ -75,7 +88,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-m', '--rules-measures',
         help='Path to the Janus CSV file trace/log measures (needed only if split-perspective is "rules" or "mixed")',
         type=str,
-        widget='FileChooser', required=True)
+        # widget='FileChooser',
+        required=True)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> DECISION TREE TRACES 2 CLUSTERS PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -89,11 +103,13 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-fi', '--classification-feature-index',
         help='index of the feature, among the ones in the input featured data, that should be used for the classification (by default CLUSTER column 0)',
         type=int,
-        widget='IntegerField', default=1)
+        # widget='IntegerField',
+        default=1)
     parser_decision_tree_traces_to_clusters.add_argument(
         '-p', '--split-perspective',
         help='Perspective upon which splitting the nodes of the tree',
-        type=str, widget='Dropdown',
+        type=str,
+        # widget='Dropdown',
         choices=['rules',
                  'attributes',
                  # 'specific-attribute',
@@ -104,7 +120,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-m', '--rules-measures',
         help='Path to the Janus CSV file trace/log measures (needed only if split-perspective is "rules" or "mixed")',
         type=str,
-        widget='FileChooser', required=True)
+        # widget='FileChooser',
+        required=True)
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> SIMPLE TREE LOGS 2 CLUSTERS PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -118,13 +135,15 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-t', '--constraints-threshold',
         help='Measure threshold where to split the node',
         type=float,
-        widget='DecimalField', default=0.95
+        # widget='DecimalField',
+        default=0.95
         # , gooey_options={'min': 0.0, 'max': 1.0}
     )
     parser_simple_tree_logs_to_clusters.add_argument(
         '-p', '--branching-policy',
         help='Policy for splitting the nodes of the tree',
-        type=str, widget='Dropdown',
+        type=str,
+        # widget='Dropdown',
         choices=['static-frequency',
                  'dynamic-frequency',
                  'dynamic-variance'],
@@ -132,11 +151,15 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     parser_simple_tree_logs_to_clusters.add_argument(
         '-decreasing', '--decreasing-order',
         help='Use a decreasing order to select the rule given the chosen branching policy measure, ascending otherwise',
-        action="store_true", widget='BlockCheckbox')
+        # widget='BlockCheckbox',
+        action="store_true"
+    )
     parser_simple_tree_logs_to_clusters.add_argument(
         '-min', '--minimize-tree',
         help='Flag to enable the minimization of the tree: collapsing of singles choice transitions',
-        action="store_true", widget='BlockCheckbox')
+        # widget='BlockCheckbox',
+        action="store_true"
+    )
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # >>>>>> SIMPLE TREE TRACES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -149,13 +172,15 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
         '-t', '--constraints-threshold',
         help='Measure threshold where to split the node',
         type=float,
-        widget='DecimalField', default=0.95
+        # widget='DecimalField',
+        default=0.95
         # , gooey_options={'min': 0.0, 'max': 1.0}
     )
     parser_simple_tree_traces.add_argument(
         '-p', '--branching-policy',
         help='Policy for splitting the nodes of the tree',
-        type=str, widget='Dropdown',
+        type=str,
+        # widget='Dropdown',
         choices=['static-frequency',
                  'dynamic-frequency',
                  'dynamic-variance'],
@@ -163,16 +188,20 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     parser_simple_tree_traces.add_argument(
         '-decreasing', '--decreasing-order',
         help='Use a decreasing order to select the rule given the chosen branching policy measure, ascending otherwise',
-        action="store_true", widget='BlockCheckbox')
+        # widget='BlockCheckbox',
+        action="store_true"
+    )
     parser_simple_tree_traces.add_argument(
         '-min', '--minimize-tree',
         help='Flag to enable the minimization of the tree: collapsing of singles choice transitions',
-        action="store_true", widget='BlockCheckbox')
+        # widget='BlockCheckbox',
+        action="store_true")
     parser_simple_tree_traces.add_argument(
         '-mls', '--min-leaf-size',
         help='Minimum number of elements to consider a node a leaf',
         type=float,
-        widget='IntegerField', default=0
+        # widget='IntegerField',
+        default=0
     )
 
     # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

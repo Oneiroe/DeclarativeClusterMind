@@ -1,29 +1,35 @@
-""" GUI/CLI interface for Declarative Clustering"""
+""" CLI interface for Declarative Clustering"""
 
 import os
 
-from gooey import Gooey, GooeyParser
-import DeclarativeClusterMind.clustering.cm_clustering as cm_clustering
+# from gooey import Gooey, GooeyParser
+from argparse import ArgumentParser
+
+import DeclarativeClusterMind.clustering.clustering as cm_clustering
 import DeclarativeClusterMind.clustering.pareto_declarative_hierarchical_clustering as pareto_clustering
 
 
-@Gooey(
-    program_name='Declarative Trace Clustering',
-    program_description='Trace clustering based on Declarative Specifications',  # Defaults to ArgParse Description
-
-)
+# @Gooey(
+#     program_name='Declarative Trace Clustering',
+#     program_description='Trace clustering based on Declarative Specifications',  # Defaults to ArgParse Description
+# )
 def main():
     """
 Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
     """
     # Common parameters among clusterings
-    parent_parser = GooeyParser(add_help=False)
+    parent_parser = ArgumentParser(add_help=False)
+    # parent_parser = GooeyParser(add_help=False)
+
     parent_parser.add_argument('-iL', '--log-file-path',
                                help='Path to input Event Log File',
-                               type=str, widget='FileChooser', required=True)
+                               type=str,
+                               # widget='FileChooser',
+                               required=True)
     parent_parser.add_argument('-a', '--clustering-algorithm',
                                help='Algorithm with which clustering the featured traces',
-                               type=str, widget='Dropdown',
+                               type=str,
+                               # widget='Dropdown',
                                choices=['kmeans',
                                         'affinity',
                                         'meanshift',
@@ -34,19 +40,25 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                         'birch'],
                                default='optics')
     parent_parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
-                               widget='DirChooser', required=True)
+                               # widget='DirChooser',
+                               required=True)
     parent_parser.add_argument('-vf', '--visualization-flag',
                                help='Flag to enable the visualization features (CPU heavy): 3D tSNE, ...',
-                               action="store_true", widget='BlockCheckbox')
+                               # widget='BlockCheckbox',
+                               action="store_true"
+                               )
     parent_parser.add_argument('-nc', '--number-of-clusters',
                                help='manuals setting of clusters number (for k-means like) or maximal number of clusters for non-parametrized ones (for density based)',
                                type=int,
-                               widget='IntegerField', default=None)
+                               # widget='IntegerField',
+                               default=None)
 
-    parser = GooeyParser(description="Behavioural trace clustering based on declarative rules.")
-    parser.add_argument('-v', '--version', action='version', version='1.0.0', gooey_options={'visible': False})
-    parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
-                        gooey_options={'visible': False})
+    parser = ArgumentParser(description="Behavioural trace clustering based on declarative rules.")
+    parser.add_argument('-v', '--version', action='version',
+                        # gooey_options={'visible': False},
+                        version='1.0.0')
+    # parser.add_argument('--ignore-gooey', help='use the CLI instead of the GUI', action='store_true',
+    #                     gooey_options={'visible': False})
     subparsers = parser.add_subparsers(help='Available clustering policies', dest='clustering_policy')
     subparsers.required = True
 
@@ -56,13 +68,19 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                          help="clustering based on rules", parents=[parent_parser])
     parser_rules.add_argument('-pca', '--apply-pca-flag',
                               help='Flag to enable features reduction through PCA',
-                              action="store_true", widget='BlockCheckbox')
+                              # widget='BlockCheckbox',
+                              action="store_true"
+                              )
     parser_rules.add_argument('-tm', '--trace-measures-csv-file-path',
                               help='Path to the Janus trace measures CSV output',
-                              type=str, widget='FileChooser', required=True)
+                              type=str,
+                              # widget='FileChooser',
+                              required=True)
     parser_rules.add_argument('-b', '--boolean-confidence',
                               help='Flag to consider the rules true/false if not enough compliant on a trace or to keep the specific measurements',
-                              action="store_true", widget='BlockCheckbox')
+                              # widget='BlockCheckbox',
+                              action="store_true"
+                              )
 
     # ATTRIBUTES PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_attributes = subparsers.add_parser("attributes",
@@ -71,7 +89,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                               parents=[parent_parser])
     parser_attributes.add_argument('-pca', '--apply-pca-flag',
                                    help='Flag to enable features reduction through PCA',
-                                   action="store_true", widget='BlockCheckbox')
+                                   # widget='BlockCheckbox',
+                                   action="store_true")
 
     # SPECIFIC ATTRIBUTE PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_specific_attribute = subparsers.add_parser("specific-attribute",
@@ -86,7 +105,8 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                                 parents=[parent_parser])
     parser_performances.add_argument('-pca', '--apply-pca-flag',
                                      help='Flag to enable features reduction through PCA',
-                                     action="store_true", widget='BlockCheckbox')
+                                     # widget='BlockCheckbox',
+                                     action="store_true")
 
     # MIXED PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     parser_mixed = subparsers.add_parser("mixed",
@@ -95,35 +115,46 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                          parents=[parent_parser])
     parser_mixed.add_argument('-pca', '--apply-pca-flag',
                               help='Flag to enable features reduction through PCA',
-                              action="store_true", widget='BlockCheckbox')
+                              # widget='BlockCheckbox',
+                              action="store_true")
     parser_mixed.add_argument('-tm', '--trace-measures-csv-file_path',
                               help='Path to the Janus trace measures CSV output',
-                              type=str, widget='FileChooser', required=True)
+                              type=str,
+                              # widget='FileChooser',
+                              required=True)
     parser_mixed.add_argument('-b', '--boolean-confidence',
                               help='Flag to consider the rules true/false if not enough compliant on a trace or to keep the specific measurements',
-                              action="store_true", widget='BlockCheckbox')
+                              # widget='BlockCheckbox',
+                              action="store_true")
 
     # PARETO PARSER >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     pareto_parser = subparsers.add_parser("pareto",
                                           description="Hierarchical clustering of a log according to its compliance to a declarative model.",
                                           help="hierarchical clustering based on declarative models")
 
-    pareto_parser.add_argument('-iL', '--input-log', help='Path to input Event Log File', type=str,
-                               widget='FileChooser')
-    pareto_parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output', type=str,
-                               widget='DirChooser')
+    pareto_parser.add_argument('-iL', '--input-log', help='Path to input Event Log File',
+                               # widget='FileChooser',
+                               type=str)
+    pareto_parser.add_argument('-o', '--output-folder', help='Path to folder where to save the output',
+                               # widget='DirChooser',
+                               type=str)
     pareto_parser.add_argument('-t', '--split-threshold', help='Measure threshold where to split the clusters',
                                type=float,
-                               widget='DecimalField', default=0.95, gooey_options={'min': 0.0, 'max': 1.0})
-    pareto_parser.add_argument('-j', '--janus-jar-path-global', help='Path to Janus JAR executable', type=str,
-                               widget='FileChooser')
+                               # widget='DecimalField',
+                               # gooey_options={'min': 0.0, 'max': 1.0},
+                               default=0.95
+                               )
+    pareto_parser.add_argument('-j', '--janus-jar-path-global', help='Path to Janus JAR executable',
+                               # widget='FileChooser',
+                               type=str)
     pareto_parser.add_argument('-s', '--simplification-flag',
                                help='Flag to enable the simplification of the models at each step',
-                               action="store_true", widget='BlockCheckbox')
+                               # widget='BlockCheckbox',
+                               action="store_true")
     pareto_parser.add_argument('-min', '--min-leaf-size',
                                help='Minimum size of the leaves/clusters below which the recursion is stopped',
-                               type=int,
-                               widget='IntegerField')
+                               # widget='IntegerField',
+                               type=int)
 
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
@@ -158,7 +189,10 @@ Use --ignore-gooey option in the terminal to suppress the GUI and use the CLI
                                            args.apply_pca_flag,
                                            args.number_of_clusters)
     elif clustering_policy == 'specific-attribute':
-        cm_clustering.specific_attribute_clustering(args.log_file_path,
+        log, input2D, selected_feature_name = cm_clustering.select_attribute_CLI(args.log_file_path)
+        cm_clustering.specific_attribute_clustering(log,
+                                                    input2D,
+                                                    selected_feature_name,
                                                     args.clustering_algorithm,
                                                     args.output_folder,
                                                     args.visualization_flag,

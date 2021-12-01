@@ -21,8 +21,6 @@ from sklearn.metrics import silhouette_score, silhouette_samples
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 
-import wx
-
 
 def cluster_traces(input2D, apply_pca_flag, features, algorithm, nc=None):
     """
@@ -553,11 +551,70 @@ def performances_clustering(log_file_path, clustering_algorithm, output_folder, 
                                                 apply_pca_flag, pca)
 
 
-def select_attribute_GUI(options_list):
+def select_attribute_CLI(log_path):
+    """
+Interactive selection of log attribute via terminal interface
+    :param log_path:
+    """
+    log = pm.read_xes(log_path)
+
+    data, feature_names = get_log_representation.get_default_representation(log)
+    # 1-hot encoding
+    input2D = pd.DataFrame(data, columns=feature_names)
+
+    while True:
+        try:
+            print([f"{i},{e}" for i, e in enumerate(feature_names)])
+            selected_attribute_index = int(input("Select feature index: "))
+            feature_name = feature_names[selected_attribute_index]
+            print(f"Selected feature: {feature_name}")
+            break
+        except ValueError:
+            print("This is not a valid number, try again.")
+        except IndexError:
+            print("Index out of range, try again.")
+
+    input2D = input2D[[feature_name]]
+
+    return log, input2D, feature_name
+
+
+def select_attribute_GUI(log_path):
+    """
+Interactive selection of log attribute via graphical interface
+    :param log_path:
+    """
+    import wx
+
+    log = pm.read_xes(log_path)
+
+    data, feature_names = get_log_representation.get_default_representation(log)
+    # 1-hot encoding
+    input2D = pd.DataFrame(data, columns=feature_names)
+    while True:
+        try:
+            app = wx.App()
+            print([f"{i},{e}" for i, e in enumerate(feature_names)])
+            feature_name = select_attribute_GUI_window(feature_names)
+            print(f"Selected feature: {feature_name}")
+            break
+        except ValueError:
+            print("This is not a valid number, try again.")
+        except IndexError:
+            print("Index out of range, try again.")
+
+    input2D = input2D[[feature_name]]
+
+    return log, input2D, feature_name
+
+
+def select_attribute_GUI_window(options_list):
     """
 Open a WX window to select from the available attributes of the event log
     :rtype: object
     """
+    import wx
+
     dlg = wx.SingleChoiceDialog(None,
                                 caption='Select attribute',
                                 message="Select the desired attribute upon which basing the clustering of the log"'Select attribute',
@@ -568,7 +625,8 @@ Open a WX window to select from the available attributes of the event log
     return dlg.GetStringSelection()
 
 
-def specific_attribute_clustering(log_file_path, clustering_algorithm, output_folder, visualization_flag,
+def specific_attribute_clustering(log, input2D, selected_feature_name, clustering_algorithm, output_folder,
+                                  visualization_flag,
                                   number_of_clusters):
     """
     Cluster the traces of a log according to a single specific categorical attributes of the log (selected by user on input
@@ -578,37 +636,15 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     :param clustering_algorithm:
     :param output_folder:
     :param visualization_flag:
+    :param selected_feature_name:
     """
-    log = pm.read_xes(log_file_path)
-
-    data, feature_names = get_log_representation.get_default_representation(log)
-    # 1-hot encoding
-    input2D = pd.DataFrame(data, columns=feature_names)
-
-    # Get attribute to use
-    while True:
-        try:
-            app = wx.App()
-            print([f"{i},{e}" for i, e in enumerate(feature_names)])
-            # selected_attribute_index = int(input("Select feature index: "))
-            # feature_name = feature_names[selected_attribute_index]
-            feature_name = select_attribute_GUI(feature_names)
-            print(f"Selected feature: {feature_name}")
-            break
-        except ValueError:
-            print("This is not a valid number, try again.")
-        except IndexError:
-            print("Index out of range, try again.")
-
-    input2D = input2D[[feature_name]]
-
     traces = input2D.shape[0]
     attributes = input2D.shape[1]
 
     print(clustering_algorithm)
     print("Traces: " + str(traces))
     print("Attributes: " + str(attributes))
-    print(feature_name)
+    print(selected_feature_name)
 
     # Clean NaN and infinity
     input2D = np.nan_to_num(input2D, posinf=1.7976931348623157e+100, neginf=-1.7976931348623157e+100)
@@ -619,7 +655,7 @@ def specific_attribute_clustering(log_file_path, clustering_algorithm, output_fo
     print("Clustering...")
     clusters = cluster_traces(input2D, False, attributes, clustering_algorithm, number_of_clusters)
 
-    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, feature_names,
+    clustering_postprocessing_and_visualization(log, output_folder, input2D, clusters, 0, [selected_feature_name],
                                                 visualization_flag,
                                                 False, None)
 
