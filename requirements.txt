@@ -1,5 +1,7 @@
+# DeclarativeClusterMind
 pm4py~=2.2.4
-wxPython~=4.1.1
-Gooey~=1.0.8.1
 plotly~=4.9.0
 requests
+# GUI
+wxPython~=4.1.1
+Gooey~=1.0.8.1
