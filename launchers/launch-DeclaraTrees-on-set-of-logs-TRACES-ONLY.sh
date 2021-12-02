@@ -97,28 +97,10 @@ for INPUT_LOG in "${INPUT_LOGS_FOLDER}"/*.xes; do
     #    $JAVA_BIN -cp $JANUS_JAR $SIMPLIFIER_MAINCLASS -iMF $CURRENT_MODEL -iME $MODEL_ENCODING -oJSON $CURRENT_MODEL -s 0 -c 0 -i 0 -prune hierarchyconflictredundancydouble
   fi
 done
-
-# Retrieve measures for each cluster
-echo "################################ LOGS MEASURES"
 # merge process models
 python3 -m DeclarativeClusterMind.utils.merge_models ${INPUT_LOGS_FOLDER} "_model.json" ${MODEL}
 #python3 -m DeclarativeClusterMind.utils.intersect_models $INPUT_LOGS_FOLDER "_model.json" ${MODEL}
 #python3 -m DeclarativeClusterMind.utils.intersect_alphabet_models $INPUT_LOGS_FOLDER "_model.json" ${MODEL}
-
-for INPUT_LOG in "${INPUT_LOGS_FOLDER}"/*.xes; do
-  echo $INPUT_LOG
-  CURRENT_OUTPUT_CHECK_CSV="${INPUT_LOG}-output.csv"
-  CURRENT_LOG_MESURES_FILE="${INPUT_LOG}-output[logMeasures].csv"
-  echo $CURRENT_LOG_MESURES_FILE
-  if test -f $CURRENT_LOG_MESURES_FILE; then
-    echo "${CURRENT_LOG_MESURES_FILE} already exists."
-  else
-    $JAVA_BIN -cp $JANUS_JAR $JANUS_MEASURES_MAINCLASS -iLF "${INPUT_LOG}" -iLE $LOG_ENCODING -iMF "$MODEL" -iME $MODEL_ENCODING -oCSV "$CURRENT_OUTPUT_CHECK_CSV" -d none -detailsLevel log -measure "Confidence"
-  fi
-done
-# Aggregate obtained measure in one unique matrix
-python3 -m DeclarativeClusterMind.utils.aggregate_clusters_measures ${INPUT_LOGS_FOLDER} "-output[logMeasures].csv" "${RESULTS_FOLDER}/aggregated_result.csv"
-python3 -m DeclarativeClusterMind.utils.label_clusters_with_measures ${INPUT_LOGS_FOLDER} "-output[logMeasures].csv" "${RESULTS_FOLDER}/clusters-labels.csv"
 
 
 # Retrieve measure for trace decision tree
@@ -140,26 +122,6 @@ fi
 python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $INPUT_LOGS_FOLDER ${RESULTS_FOLDER}/traces-labels.csv
 
 # Build decision-Trees
-echo "################################ DeclaraTrees Clusters"
-python3 -m DeclarativeClusterMind.cli_decision_trees simple-tree-logs-to-clusters \
-  -i ${RESULTS_FOLDER}"/aggregated_result.csv" \
-  -o ${RESULTS_FOLDER}"/DeclareTree-LOGS.dot" \
-  -t $CONSTRAINTS_THRESHOLD \
-  -p $BRANCHING_POLICY \
-  $MINIMIZATION_FLAG \
-  $BRANCHING_ORDER_DECREASING_FLAG
-
-echo "################################ CART DECISION TREES clusters"
-# If rules: -i clusters-labels.csv and -m None
-# If attributes/performance: -i clusters-stats.csv and -m None
-# If mixed: -i clusters-stats.csv and -m clusters-labels.csv
-python3 -m DeclarativeClusterMind.cli_decision_trees decision-tree-logs-to-clusters \
-  -i ${RESULTS_FOLDER}"/clusters-stats.csv" \
-  -o ${RESULTS_FOLDER}"/decision_tree_logs.dot" \
-  -p ${MULTI_PERSPECTIVE_FEATURES} \
-  -m ${RESULTS_FOLDER}"/clusters-labels.csv" \
-  -fi 0
-
 echo "################################ DeclaraTrees Traces"
 python3 -m DeclarativeClusterMind.cli_decision_trees simple-tree-traces \
   -i ${OUTPUT_TRACE_MEASURES_CSV} \
