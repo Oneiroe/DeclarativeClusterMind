@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# WHAT: Create a classic decision tree from the clustering output
-# WHY: hopefully the decision trees models in a concise and meaningful way the discriminants between the clusters
-
 ##################################################################
 # PARAMETERS
 ##################################################################

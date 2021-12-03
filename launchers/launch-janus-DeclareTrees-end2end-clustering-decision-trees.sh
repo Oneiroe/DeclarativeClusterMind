@@ -6,7 +6,7 @@
 ##################################################################
 # PARAMETERS
 ##################################################################
-WORKING_DIR="/home/alessio/Data/Phd/my_code/ClusterMind"
+WORKING_DIR="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind"
 cd $WORKING_DIR
 
 # Janus main classes
@@ -161,9 +161,9 @@ fi
 # Launch clustering
 echo "################################ CLUSTERING"
 if [ $CLUSTERING_POLICY == "rules" ] || [ $CLUSTERING_POLICY == "mixed" ]; then
-  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
+  python3 -m DeclarativeClusterMind.cli_clustering $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG $APPLY_PCA_FLAG -nc $CLUSTERS_NUMBER -tm "$OUTPUT_TRACE_MEASURES_CSV" $BOOLEAN_RULES
 else
-  python3 -m DeclarativeClusterMind.ui_clustering --ignore-gooey $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG -nc $CLUSTERS_NUMBER $APPLY_PCA_FLAG
+  python3 -m DeclarativeClusterMind.cli_clustering $CLUSTERING_POLICY -iL $INPUT_LOG -a $CLUSTERING_ALGORITHM -o $PROCESSED_DATA_FOLDER $VISUALIZATION_FLAG -nc $CLUSTERS_NUMBER $APPLY_PCA_FLAG
 fi
 
 # Retrieve measures for each cluster
@@ -199,7 +199,7 @@ fi
 
 # Build decision-Tree
 echo "################################ DECLARE TREES"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.cli_declare_trees simple-tree-logs-to-clusters\
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   -o $RESULT_DECLARE_TREE_CLUSTERS"-Decreasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
@@ -207,7 +207,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
   $MINIMIZATION_FLAG \
   -decreasing
 
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-logs-to-clusters\
+python3 -m DeclarativeClusterMind.cli_declare_trees simple-tree-logs-to-clusters\
   -i $PROCESSED_DATA_FOLDER"/aggregated_result.csv" \
   -o $RESULT_DECLARE_TREE_CLUSTERS"-Increasing.dot" \
   -t $CONSTRAINTS_THRESHOLD \
@@ -216,7 +216,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-lo
 
 echo "################################ DECISION TREES logs to clusters"
 # If mixed: -i clusters-stats.csv and -m clusters-labels.csv
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-logs-to-clusters \
+python3 -m DeclarativeClusterMind.cli_declare_trees decision-tree-logs-to-clusters \
   -i ${RESULTS_FOLDER}"/clusters-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_clusters.dot" \
   -p ${SPLIT_POLICY} \
@@ -224,7 +224,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-
   -fi 0
 
 echo "################################ DECISION TREES traces to clusters"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-traces-to-clusters\
+python3 -m DeclarativeClusterMind.cli_declare_trees decision-tree-traces-to-clusters\
   -i ${RESULTS_FOLDER}"/traces-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
   -fi 1 \
@@ -233,7 +233,7 @@ python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey decision-tree-
 
 
 echo "################################ SIMPLE TREES Traces"
-python3 -m DeclarativeClusterMind.ui_declare_trees --ignore-gooey simple-tree-traces \
+python3 -m DeclarativeClusterMind.cli_declare_trees simple-tree-traces \
   -i ${OUTPUT_TRACE_MEASURES_CSV} \
   -o $RESULT_DECLARE_TREE_TRACES \
   -t $CONSTRAINTS_THRESHOLD \

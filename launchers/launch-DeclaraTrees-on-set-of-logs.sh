@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# WHAT: Create a classic decision tree from the clustering output
-# WHY: hopefully the decision trees models in a concise and meaningful way the discriminants between the clusters
-
 ##################################################################
 # PARAMETERS
 ##################################################################
-INPUT_LOGS_FOLDER="PATH_TO_INPUT_LOGS_FOLDER"
-RESULTS_FOLDER="PATH_TO_RESULTS_FOLDER"
+INPUT_LOGS_FOLDER="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/experiments/test/log"
+RESULTS_FOLDER="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/experiments/test"
 
 CONSTRAINTS_TEMPLATE_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist.csv"
 CONSTRAINTS_TASKS_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist-tasks.csv"
