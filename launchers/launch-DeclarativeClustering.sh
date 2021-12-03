@@ -3,11 +3,11 @@
 ##################################################################
 # PARAMETERS
 ##################################################################
-INPUT_LOG="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/experiments/test2/input/SEPSIS-log.xes"
-RESULTS_FOLDER="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/experiments/test2"
+INPUT_LOG="PATH_TO_INPUT_LOG"
+RESULTS_FOLDER="PATH_TO_RESULTS_FOLDER"
 
-CONSTRAINTS_TEMPLATE_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist.csv"
-CONSTRAINTS_TASKS_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist-tasks.csv"
+CONSTRAINTS_TEMPLATE_BLACKLIST=$(dirname -- "$INPUT_LOG")"/blacklist.csv"
+CONSTRAINTS_TASKS_BLACKLIST=$(dirname -- "$INPUT_LOG")"/blacklist-tasks.csv"
 
 # PATHs
 WORKING_DIR="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind" # path containing DeclarativeClusterMind package

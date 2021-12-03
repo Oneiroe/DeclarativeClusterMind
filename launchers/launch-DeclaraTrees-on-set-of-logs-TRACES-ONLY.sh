@@ -33,8 +33,8 @@ LOG_ENCODING="xes"
 MODEL=${RESULTS_FOLDER}"/model.json"
 MODEL_ENCODING="json"
 
-OUTPUT_CHECK_CSV=$RESULTS_FOLDER"/measures.csv"
-OUTPUT_TRACE_MEASURES_CSV=$RESULTS_FOLDER"/measures[tracesMeasures].csv"
+MEASURES_BASE_CSV=$RESULTS_FOLDER"/measures.csv"
+TRACE_MEASURES_CSV=$RESULTS_FOLDER"/measures[tracesMeasures].csv"
 
 # DECLRE-Tree
 MINIMIZATION_FLAG="-min"
@@ -47,6 +47,7 @@ MULTI_PERSPECTIVE_FEATURES="mixed"
 # 'specific-attribute'
 # 'performances'
 # 'mixed'
+MINIMUM_LEAF_SIZE=100
 
 MERGED_LOG="${RESULTS_FOLDER}/merged-log.xes"
 
@@ -100,7 +101,6 @@ python3 -m DeclarativeClusterMind.utils.merge_models ${INPUT_LOGS_FOLDER} "_mode
 #python3 -m DeclarativeClusterMind.utils.intersect_models $INPUT_LOGS_FOLDER "_model.json" ${MODEL}
 #python3 -m DeclarativeClusterMind.utils.intersect_alphabet_models $INPUT_LOGS_FOLDER "_model.json" ${MODEL}
 
-
 # Retrieve measure for trace decision tree
 echo "################################ TRACES MEASURES"
 # Merge the input logs
@@ -110,11 +110,11 @@ else
   python3 -m DeclarativeClusterMind.utils.merge_logs $MERGED_LOG $INPUT_LOGS_FOLDER"/"*.xes
 fi
 # compute the trace measures of the joint log
-if test -f "${OUTPUT_TRACE_MEASURES_CSV}"; then
-  echo "$OUTPUT_TRACE_MEASURES_CSV already exists."
+if test -f "${TRACE_MEASURES_CSV}"; then
+  echo "$TRACE_MEASURES_CSV already exists."
 else
   # -Xmx12000m in case of extra memory required add this (adjusting the required memory)
-  $JAVA_BIN -cp $JANUS_JAR $JANUS_MEASURES_MAINCLASS -iLF $MERGED_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $OUTPUT_CHECK_CSV -d none -nanLogSkip -measure "Confidence" -detailsLevel trace
+  $JAVA_BIN -cp $JANUS_JAR $JANUS_MEASURES_MAINCLASS -iLF $MERGED_LOG -iLE $LOG_ENCODING -iMF $MODEL -iME $MODEL_ENCODING -oCSV $MEASURES_BASE_CSV -d none -nanLogSkip -measure "Confidence" -detailsLevel trace
 fi
 # Label traces
 python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $INPUT_LOGS_FOLDER ${RESULTS_FOLDER}/traces-labels.csv
@@ -122,18 +122,18 @@ python3 -m DeclarativeClusterMind.evaluation.label_traces_from_clustered_logs $I
 # Build decision-Trees
 echo "################################ DeclaraTrees Traces"
 python3 -m DeclarativeClusterMind.cli_decision_trees simple-tree-traces \
-  -i ${OUTPUT_TRACE_MEASURES_CSV} \
+  -i ${TRACE_MEASURES_CSV} \
   -o ${RESULTS_FOLDER}"/DeclareTree-TRACES.dot" \
   -t $CONSTRAINTS_THRESHOLD \
   -p $BRANCHING_POLICY \
   $MINIMIZATION_FLAG \
   $BRANCHING_ORDER_DECREASING_FLAG \
-  -mls 100
+  -mls $MINIMUM_LEAF_SIZE
 
 echo "################################ CART DECISION TREES traces"
 python3 -m DeclarativeClusterMind.cli_decision_trees decision-tree-traces-to-clusters \
   -i ${RESULTS_FOLDER}"/traces-labels.csv" \
   -o ${RESULTS_FOLDER}"/decision_tree_traces.dot" \
   -fi 1 \
-  -m "$OUTPUT_TRACE_MEASURES_CSV" \
+  -m "$TRACE_MEASURES_CSV" \
   -p ${MULTI_PERSPECTIVE_FEATURES}
