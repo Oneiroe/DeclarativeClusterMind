@@ -12,15 +12,16 @@ RESULTS_FOLDER="PATH_TO_RESULTS_FOLDER"
 CONSTRAINTS_TEMPLATE_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist.csv"
 CONSTRAINTS_TASKS_BLACKLIST=${INPUT_LOGS_FOLDER}"/blacklist-tasks.csv"
 
-##################################################################
-
+# PATHs
 WORKING_DIR="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind" # path containing DeclarativeClusterMind package
 cd $WORKING_DIR || exit
-
-# Janus/MINERful main classes
 JAVA_BIN="/home/alessio/Software/jdk/jdk-11.0.10/bin/java"
 JANUS_JAR="/home/alessio/Data/Phd/my_code/DeclarativeClusterMind/Janus.jar"
 MINERFUL_JAR="/home/alessio/Data/Phd/code_3rd_party/MINERful/MINERful.jar"
+
+##################################################################
+
+# Janus/MINERful main classes
 JANUS_MEASURES_MAINCLASS="minerful.JanusMeasurementsStarter"
 JANUS_DISCOVERY_MAINCLASS="minerful.JanusOfflineMinerStarter"
 JANUS_DISCOVERY_SUPPORT=0.0
