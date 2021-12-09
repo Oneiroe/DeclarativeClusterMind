@@ -102,7 +102,7 @@ def export_cluster_statistics_multi_perspective(logs, output_csv_file):
 
     print(f"Writing stats in {output_csv_file} ...")
     # retrieve and output stats
-    with open(output_csv_file, 'w') as output:
+    with open(output_csv_file, 'w', newline='') as output:
         csv_out = csv.writer(output, delimiter=';')
         csv_out.writerow(header)
         for cluster_index in logs:

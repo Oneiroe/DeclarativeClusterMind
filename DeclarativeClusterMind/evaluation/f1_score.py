@@ -34,7 +34,7 @@ def compute_f1(clusters_logs, traces_clusters_labels, output_csv_file_path,
     header = ['CLUSTER', 'TRACES_NUM', 'FITNESS', 'PRECISION', 'F1']
 
     # retrieve and output stats
-    with open(output_csv_file_path, 'w') as detailed_output:
+    with open(output_csv_file_path, 'w', newline='') as detailed_output:
         csv_detailed_out = csv.writer(detailed_output, delimiter=';')
         csv_detailed_out.writerow(header)
 
@@ -131,7 +131,7 @@ The label for each entry-technique is given by the name of the sub-folder
     :param plot_output_path: if given, plot the result in this file as bar-plot
     """
     print("Aggregating F1-scores results...")
-    with open(output_file_path, 'w') as out_file:
+    with open(output_file_path, 'w', newline='') as out_file:
         header = ['TECHNIQUE', 'CLUSTERS_NUM', 'FITNESS', 'PRECISION', 'F1']
         header_results = ['CLUSTER', 'TRACES_NUM', 'FITNESS', 'PRECISION', 'F1']
         result_writer = csv.DictWriter(out_file, header, delimiter=';')

@@ -209,7 +209,7 @@ def export_traces_labels_multi_perspective(log, clusters, output_file_path):
     :param output_file_path:
     """
     print("Exporting traces cluster labels to " + output_file_path)
-    with open(output_file_path, 'w') as output_file:
+    with open(output_file_path, 'w', newline='') as output_file:
         all_events_attributes = sorted(list(attributes_filter.get_all_event_attributes_from_log(log)))
         performances = ["case-duration", "case-length", "case-unique-tasks"]
 
@@ -246,7 +246,7 @@ def export_centroids_constraints(clusters, pca, threshold, measures_num, constra
                 else:
                     res_matrix[centroid_index] += [0]
         # export to csv
-        with open(os.path.join(output_folder, 'centroids-constraints.csv'), 'w') as output:
+        with open(os.path.join(output_folder, 'centroids-constraints.csv'), 'w', newline='') as output:
             csv_output = csv.writer(output, delimiter=';')
             # header
             csv_output.writerow(constraints_names)
@@ -258,7 +258,7 @@ def export_centroids_constraints(clusters, pca, threshold, measures_num, constra
 
 def export_pca_relevant_feature(pca, feature_names, output_folder):
     print(">>>>>visualize PCA selected features")
-    with open(os.path.join(output_folder, 'pca-features.csv'), 'w') as output:
+    with open(os.path.join(output_folder, 'pca-features.csv'), 'w', newline='') as output:
         n_pcs = pca.components_.shape[0]
         pca_features = pd.DataFrame(pca.components_, columns=feature_names)
         # Print all features importance

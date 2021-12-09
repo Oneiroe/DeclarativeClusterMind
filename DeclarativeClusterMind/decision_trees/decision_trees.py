@@ -14,6 +14,8 @@ The perspectives supported are:
 import csv
 import sys
 
+import graphviz
+
 import DeclarativeClusterMind.io.Janus3_import as j3tio
 
 import numpy as np
@@ -287,14 +289,16 @@ This part is common to any perspective chosen at previous step.
     clf = clf.fit(featured_data, labels)
     print("Exporting decision Tree...")
     tree.plot_tree(clf)
-    tree.export_graphviz(clf,
-                         out_file=output_file,
-                         feature_names=features_names,
-                         class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
-                         filled=True,
-                         rounded=True,
-                         # special_characters = True
-                         )
+    out_tree = tree.export_graphviz(clf,
+                                    # out_file=output_file,
+                                    feature_names=features_names,
+                                    class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
+                                    filled=True,
+                                    rounded=True,
+                                    # special_characters = True
+                                    )
+    graph = graphviz.Source(out_tree, format='svg')
+    graph.render(filename=output_file)
 
     left = 0
     clusters_labels = sorted(set(labels))
@@ -307,15 +311,16 @@ This part is common to any perspective chosen at previous step.
         )
         clf = clf.fit(featured_data, current_labels)
         tree.plot_tree(clf)
-        tree.export_graphviz(clf,
-                             # out_file=output_file + "_" + selected_feature_name + "_" + cluster + ".dot",
-                             out_file=output_file + "_" + cluster + ".dot",
-                             feature_names=features_names,
-                             class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
-                             filled=True,
-                             rounded=True,
-                             # special_characters = True
-                             )
+        curr = tree.export_graphviz(clf,
+                                    # out_file=output_file + "_" + cluster + ".dot",
+                                    feature_names=features_names,
+                                    class_names=[selected_feature_name + "_" + str(i) for i in clf.classes_],
+                                    filled=True,
+                                    rounded=True,
+                                    # special_characters = True
+                                    )
+        graph = graphviz.Source(curr, format='svg')
+        graph.render(filename=output_file + "_" + cluster + ".dot")
 
 # if __name__ == '__main__':
 #     log_attributes_csv_file = "/home/alessio/Data/Phd/my_code/ClusterMind/experiments/REAL-LIFE-EXPLANATION/SEPSIS_age/3-results/clusters-stats.csv"

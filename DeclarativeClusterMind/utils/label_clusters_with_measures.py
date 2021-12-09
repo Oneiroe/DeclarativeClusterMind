@@ -30,7 +30,7 @@ returns a label file where each row refer to a cluster and each column is a cons
                     else:
                         result_map[cluster_name][line[0]] = [line[1]]
 
-    with open(os.path.join(folder, output_file), 'w') as result:
+    with open(os.path.join(folder, output_file), 'w', newline='') as result:
         csv_result = csv.writer(result, delimiter=';')
         temp_cluster, temp_line = result_map.popitem()
         header = ["CLUSTER"] + sorted(list(temp_line.keys()))

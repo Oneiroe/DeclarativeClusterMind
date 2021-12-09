@@ -25,7 +25,7 @@ def aggregate_clusters_measures(folder, files_suffix, output_file="aggregated_re
                     else:
                         result_map[line[0]] += [line[1]]
 
-    with open(os.path.join(folder, output_file), 'w') as result:
+    with open(os.path.join(folder, output_file), 'w', newline='') as result:
         csv_result = csv.writer(result, delimiter=';')
         for key in result_map.keys():
             # print([key] + result_map[key])

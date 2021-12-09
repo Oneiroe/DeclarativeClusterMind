@@ -27,7 +27,7 @@ Export in output the list of trace labels given a clustering
     :param labels: list
     :param output_csv_path:
     """
-    with open(output_csv_path, 'w') as csv_file:
+    with open(output_csv_path, 'w', newline='') as csv_file:
         csv_writer = csv.writer(csv_file, delimiter=";")
         csv_writer.writerow(header)
         for index, line in enumerate(labels):

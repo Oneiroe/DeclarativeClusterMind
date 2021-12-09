@@ -26,7 +26,7 @@ def compare_traces_labels(labels_original_file, labels_resulting_file, output_ma
     original_names = sorted(list(original_names))
     resulting_names = sorted(list(resulting_names))
 
-    with open(output_matrix, 'w') as out_file:
+    with open(output_matrix, 'w', newline='') as out_file:
         w = csv.writer(out_file, delimiter=';')
         header = ["clusters"] + [x for x in sorted(original_names)]
         w.writerow(header)

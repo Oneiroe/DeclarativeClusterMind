@@ -558,7 +558,7 @@ It build clusters sub-logs from the leaves of the tree
                            os.path.join(output_folder, f"{log.attributes['concept:name']}_cluster_{cluster}.xes"))
 
     # export traces labels
-    with open(os.path.join(output_folder, "tree-traces-labels.csv"), 'w') as label_file:
+    with open(os.path.join(output_folder, "tree-traces-labels.csv"), 'w', newline='') as label_file:
         header = ["TRACE", "CLUSTER"]
         writer = csv.writer(label_file, delimiter=';')
         writer.writerow(header)
